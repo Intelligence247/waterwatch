@@ -1,5 +1,12 @@
-import "dotenv/config";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import dotenv from "dotenv";
 import { createServer } from "node:http";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Load .env from backend/ regardless of cwd (e.g. `node src/server.js` from src/ vs backend/)
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 import { createApp } from "./app.js";
 import { loadEnv } from "./config/env.js";
 import { connectDatabase, disconnectDatabase } from "./db/connection.js";
