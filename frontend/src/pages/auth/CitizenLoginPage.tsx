@@ -1,28 +1,55 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../components/ui/ToastProvider';
+import { resendVerification } from '../../lib/authApi';
 import { Droplets, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function CitizenLoginPage() {
   const { signIn } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSubmitting(true);
-    const { error: err } = await signIn(email, password);
+    const { error: err, fullName } = await signIn(email, password);
     setSubmitting(false);
     if (err) {
       setError(err === 'Invalid login credentials' ? 'Invalid email or password.' : err);
       return;
     }
+    const name = fullName?.trim().split(/\s+/)[0];
+    toast(
+      'success',
+      name ? `Signed in successfully. Welcome back, ${name}.` : 'Signed in successfully. Welcome back.',
+    );
     navigate('/citizen');
+  };
+
+  const handleResend = async () => {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      toast('warning', 'Enter your email address to resend verification.');
+      return;
+    }
+    setResending(true);
+    try {
+      await resendVerification(trimmed);
+      toast('success', 'Verification email sent. Check your inbox and spam/junk folder.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to resend verification email.';
+      toast('error', message);
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
@@ -120,6 +147,18 @@ export default function CitizenLoginPage() {
               {submitting ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => void handleResend()}
+              disabled={resending}
+              className="text-sm font-semibold text-teal-700 hover:text-teal-900 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {resending ? 'Sending...' : "Didn't receive the verification email?"}{" "}
+              {!resending ? 'Resend' : null}
+            </button>
+          </div>
 
           <p className="mt-8 text-center text-sm text-slate-500">
             Don't have an account?{' '}

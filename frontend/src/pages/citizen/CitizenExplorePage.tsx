@@ -1,10 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../components/ui/ToastProvider';
 import type { Waterpoint, WaterpointStatus, WaterpointType } from '../../lib/types';
+import { ApiError } from '../../lib/apiClient';
+import { createWaterpoint, listWaterpoints } from '../../lib/waterpointsApi';
+import { createFaultReport } from '../../lib/faultReportsApi';
 import {
   Navigation,
   X,
@@ -141,13 +143,19 @@ export default function CitizenExplorePage() {
 
   const fetchWaterpoints = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('waterpoints').select('*').order('name');
-    if (filterStatus !== 'all') query = query.eq('status', filterStatus);
-    if (filterType !== 'all') query = query.eq('type', filterType);
-    const { data } = await query;
-    setWaterpoints((data as Waterpoint[]) || []);
+    try {
+      const result = await listWaterpoints({
+        ...(filterStatus !== 'all' ? { status: filterStatus } : {}),
+        ...(filterType !== 'all' ? { type: filterType } : {}),
+        limit: 100,
+      });
+      setWaterpoints(result.items);
+    } catch {
+      setWaterpoints([]);
+      toast('error', 'Failed to load water points from backend.');
+    }
     setLoading(false);
-  }, [filterStatus, filterType]);
+  }, [filterStatus, filterType, toast]);
 
   useEffect(() => { fetchWaterpoints(); }, [fetchWaterpoints]);
 
@@ -198,23 +206,22 @@ export default function CitizenExplorePage() {
       return;
     }
     setReportSubmitting(true);
-    const { error } = await supabase.from('fault_reports').insert({
-      waterpoint_id: reportForm.waterpointId || null,
-      reporter_name: profile?.full_name || '',
-      reporter_phone: profile?.phone || '',
-      description: reportForm.description.trim(),
-      latitude: clickedLatLng.lat,
-      longitude: clickedLatLng.lng,
-      community: profile?.community || '',
-      status: 'pending',
-    });
-    setReportSubmitting(false);
-    if (error) {
-      toast('error', 'Failed to submit report. Please try again.');
-    } else {
+    try {
+      await createFaultReport({
+        ...(reportForm.waterpointId ? { waterpointId: reportForm.waterpointId } : {}),
+        reporterName: profile?.full_name || 'Citizen Reporter',
+        reporterPhone: profile?.phone || '',
+        description: reportForm.description.trim(),
+        latitude: clickedLatLng.lat,
+        longitude: clickedLatLng.lng,
+        community: profile?.community || 'Unknown',
+      });
       setReportSuccess(true);
       toast('success', 'Fault report submitted successfully!');
+    } catch {
+      toast('error', 'Failed to submit report. Please try again.');
     }
+    setReportSubmitting(false);
   };
 
   const submitWaterpoint = async () => {
@@ -224,24 +231,28 @@ export default function CitizenExplorePage() {
       return;
     }
     setWpSubmitting(true);
-    const { error } = await supabase.from('waterpoints').insert({
-      name: wpForm.name.trim(),
-      type: wpForm.type,
-      status: 'functional',
-      latitude: clickedLatLng.lat,
-      longitude: clickedLatLng.lng,
-      community: wpForm.community.trim(),
-      lga: wpForm.lga.trim(),
-      description: wpForm.description.trim(),
-    });
-    setWpSubmitting(false);
-    if (error) {
-      toast('error', 'Failed to add water point. Please try again.');
-    } else {
+    try {
+      await createWaterpoint({
+        name: wpForm.name.trim(),
+        type: wpForm.type,
+        status: 'functional',
+        latitude: clickedLatLng.lat,
+        longitude: clickedLatLng.lng,
+        community: wpForm.community.trim(),
+        lga: wpForm.lga.trim(),
+        description: wpForm.description.trim(),
+      });
       setWpSuccess(true);
       toast('success', 'Water point added successfully!');
+      fetchWaterpoints();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        toast('error', 'Only admins can add water points. Please submit a fault report instead.');
+      } else {
+        toast('error', 'Failed to add water point. Please try again.');
+      }
     }
-    fetchWaterpoints();
+    setWpSubmitting(false);
   };
 
   return (

@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../components/ui/ToastProvider';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { createComment, deleteComment as deleteCommentApi, listComments } from '../../lib/commentsApi';
+import { listWaterpoints } from '../../lib/waterpointsApi';
 import {
   MessageSquare,
   Send,
@@ -37,18 +38,23 @@ export default function CitizenCommunityPage() {
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('comments')
-      .select('*, citizen_profiles(full_name, community), waterpoints(name)')
-      .order('created_at', { ascending: false })
-      .limit(50);
-    setComments((data as Comment[]) || []);
+    try {
+      const data = await listComments({ limit: 50 });
+      setComments((data.items as Comment[]) || []);
+    } catch {
+      setComments([]);
+      toast('error', 'Failed to load community comments.');
+    }
     setLoading(false);
-  }, []);
+  }, [toast]);
 
   const fetchWaterpoints = useCallback(async () => {
-    const { data } = await supabase.from('waterpoints').select('id, name').order('name');
-    setWaterpoints((data as Array<{ id: string; name: string }>) || []);
+    try {
+      const data = await listWaterpoints({ limit: 100 });
+      setWaterpoints(data.items.map((item) => ({ id: item.id, name: item.name })));
+    } catch {
+      setWaterpoints([]);
+    }
   }, []);
 
   useEffect(() => { fetchComments(); fetchWaterpoints(); }, [fetchComments, fetchWaterpoints]);
@@ -56,27 +62,31 @@ export default function CitizenCommunityPage() {
   const submitComment = async () => {
     if (!user || !newComment.trim()) return;
     setSubmitting(true);
-    const { error } = await supabase.from('comments').insert({
-      waterpoint_id: selectedWaterpoint || null,
-      author_id: user.id,
-      content: newComment.trim(),
-    });
-    setSubmitting(false);
-    if (error) {
-      toast('error', 'Failed to post comment. Please try again.');
-    } else {
+    try {
+      await createComment({
+        ...(selectedWaterpoint ? { waterpointId: selectedWaterpoint } : {}),
+        content: newComment.trim(),
+      });
       setNewComment('');
       setSelectedWaterpoint('');
       fetchComments();
+    } catch {
+      toast('error', 'Failed to post comment. Please try again.');
     }
+    setSubmitting(false);
   };
 
   const deleteComment = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    const { error } = await supabase.from('comments').delete().eq('id', deleteTarget);
+    let failed = false;
+    try {
+      await deleteCommentApi(deleteTarget);
+    } catch {
+      failed = true;
+    }
     setDeleting(false);
-    if (error) {
+    if (failed) {
       toast('error', 'Failed to delete comment.');
     } else {
       toast('success', 'Comment deleted.');

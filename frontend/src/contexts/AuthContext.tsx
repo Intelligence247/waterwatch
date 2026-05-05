@@ -1,17 +1,41 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import type { User, Session } from '@supabase/supabase-js';
+import { api, setUnauthorizedHandler } from '../lib/apiClient';
+import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '../lib/authTokens';
 
 export type UserRole = 'admin' | 'citizen' | null;
 
+type AuthUser = {
+  id: string;
+  email: string;
+};
+
+type AuthSession = {
+  accessToken: string;
+} | null;
+
+type BackendUser = {
+  id: string;
+  fullName: string;
+  email: string;
+  role: 'admin' | 'citizen';
+  phone?: string | null;
+  community?: string | null;
+  emailVerified: boolean;
+};
+
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
+  session: AuthSession;
   profile: { full_name: string; role: string; phone?: string; community?: string } | null;
   userRole: UserRole;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUpAdmin: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; fullName?: string }>;
+  signUpAdmin: (
+    email: string,
+    password: string,
+    fullName: string,
+    inviteToken: string,
+  ) => Promise<{ error: string | null }>;
   signUpCitizen: (email: string, password: string, fullName: string, phone: string, community: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -19,102 +43,166 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [session, setSession] = useState<AuthSession>(null);
   const [profile, setProfile] = useState<{ full_name: string; role: string; phone?: string; community?: string } | null>(null);
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
-    // Check admin_profiles first
-    const { data: adminData } = await supabase
-      .from('admin_profiles')
-      .select('full_name, role')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (adminData) {
-      setProfile({ full_name: adminData.full_name, role: adminData.role });
-      setUserRole('admin');
-      return;
-    }
-
-    // Check citizen_profiles
-    const { data: citizenData } = await supabase
-      .from('citizen_profiles')
-      .select('full_name, phone, community')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (citizenData) {
-      setProfile({ full_name: citizenData.full_name, role: 'citizen', phone: citizenData.phone, community: citizenData.community });
-      setUserRole('citizen');
-      return;
-    }
-
-    setProfile(null);
-    setUserRole(null);
-  };
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        (async () => { await fetchProfile(s.user.id); })();
-      }
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) {
-        (async () => { await fetchProfile(s.user.id); })();
-      } else {
-        setProfile(null);
-        setUserRole(null);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
-  };
-
-  const signUpAdmin = async (email: string, password: string, fullName: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message };
-    if (data.user) {
-      await supabase.from('admin_profiles').insert({ id: data.user.id, full_name: fullName });
-    }
-    return { error: null };
-  };
-
-  const signUpCitizen = async (email: string, password: string, fullName: string, phone: string, community: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error: error.message };
-    if (data.user) {
-      await supabase.from('citizen_profiles').insert({
-        id: data.user.id,
-        full_name: fullName,
-        phone,
-        community,
-      });
-    }
-    return { error: null };
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
+  const clearLocalAuthState = () => {
+    clearAuthTokens();
     setUser(null);
     setSession(null);
     setProfile(null);
     setUserRole(null);
+  };
+
+  const applyBackendUser = (backendUser: BackendUser) => {
+    setUser({
+      id: backendUser.id,
+      email: backendUser.email,
+    });
+    setProfile({
+      full_name: backendUser.fullName,
+      role: backendUser.role,
+      ...(backendUser.phone ? { phone: backendUser.phone } : {}),
+      ...(backendUser.community ? { community: backendUser.community } : {}),
+    });
+    setUserRole(backendUser.role);
+  };
+
+  const refreshAccessToken = async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return null;
+
+    try {
+      const data = await api.post<{ accessToken: string; refreshToken?: string }>(
+        '/api/auth/refresh',
+        { refreshToken },
+      );
+
+      setAuthTokens({
+        accessToken: data.accessToken,
+        ...(data.refreshToken ? { refreshToken: data.refreshToken } : {}),
+      });
+      setSession({ accessToken: data.accessToken });
+      return data.accessToken;
+    } catch {
+      clearLocalAuthState();
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      clearLocalAuthState();
+    });
+
+    const bootstrap = async () => {
+      try {
+        const hasAccessToken = Boolean(getAccessToken());
+        const hasRefreshToken = Boolean(getRefreshToken());
+        if (!hasAccessToken && !hasRefreshToken) {
+          clearLocalAuthState();
+          return;
+        }
+
+        let meData: { user: BackendUser } | null = null;
+        try {
+          meData = await api.get<{ user: BackendUser }>('/api/auth/me', { auth: true });
+        } catch {
+          const refreshed = await refreshAccessToken();
+          if (refreshed) {
+            meData = await api.get<{ user: BackendUser }>('/api/auth/me', { auth: true });
+          }
+        }
+
+        if (meData?.user) {
+          applyBackendUser(meData.user);
+        } else {
+          clearLocalAuthState();
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void bootstrap();
+
+    return () => {
+      setUnauthorizedHandler(null);
+    };
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const data = await api.post<{
+        accessToken: string;
+        refreshToken?: string;
+        user: BackendUser;
+      }>('/api/auth/login', { email, password });
+
+      setAuthTokens({
+        accessToken: data.accessToken,
+        ...(data.refreshToken ? { refreshToken: data.refreshToken } : {}),
+      });
+      setSession({ accessToken: data.accessToken });
+      applyBackendUser(data.user);
+      return { error: null, fullName: data.user.fullName };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed';
+      return { error: message };
+    }
+  };
+
+  const signUpAdmin = async (
+    email: string,
+    password: string,
+    fullName: string,
+    inviteToken: string,
+  ) => {
+    try {
+      await api.post('/api/auth/register-admin-with-invite', {
+        fullName,
+        email,
+        password,
+        inviteToken,
+      });
+      return { error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Registration failed';
+      return { error: message };
+    }
+  };
+
+  const signUpCitizen = async (email: string, password: string, fullName: string, phone: string, community: string) => {
+    try {
+      await api.post('/api/auth/register', {
+        fullName,
+        email,
+        password,
+        role: 'citizen',
+        phone,
+        community,
+      });
+      return { error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Registration failed';
+      return { error: message };
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      const refreshToken = getRefreshToken();
+      await api.post('/api/auth/logout', {
+        ...(refreshToken ? { refreshToken } : {}),
+      });
+    } catch {
+      // Sign-out should still proceed locally even if network fails.
+    } finally {
+      clearLocalAuthState();
+    }
   };
 
   return (

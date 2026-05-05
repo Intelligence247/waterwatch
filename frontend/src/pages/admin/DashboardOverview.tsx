@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
+import { getAdminOverview } from '../../lib/analyticsApi';
 import type { Waterpoint, WaterpointStatus } from '../../lib/types';
 import {
   MapPin,
@@ -41,27 +41,22 @@ export default function DashboardOverview() {
   useEffect(() => {
     async function fetch() {
       setLoading(true);
-      const [wpRes, rptRes, recentRes] = await Promise.all([
-        supabase.from('waterpoints').select('status'),
-        supabase.from('fault_reports').select('status'),
-        supabase.from('waterpoints').select('*').order('updated_at', { ascending: false }).limit(5),
-      ]);
-
-      const wps = wpRes.data || [];
-      const rpts = rptRes.data || [];
-
-      setStats({
-        totalWaterpoints: wps.length,
-        functional: wps.filter((w: { status: string }) => w.status === 'functional').length,
-        faulty: wps.filter((w: { status: string }) => w.status === 'faulty').length,
-        underRepair: wps.filter((w: { status: string }) => w.status === 'under_repair').length,
-        totalReports: rpts.length,
-        pendingReports: rpts.filter((r: { status: string }) => r.status === 'pending').length,
-        verifiedReports: rpts.filter((r: { status: string }) => r.status === 'verified').length,
-        resolvedReports: rpts.filter((r: { status: string }) => r.status === 'resolved').length,
-      });
-
-      setRecentWaterpoints((recentRes.data as Waterpoint[]) || []);
+      try {
+        const overview = await getAdminOverview();
+        setStats({
+          totalWaterpoints: overview.stats.totalWaterpoints,
+          functional: overview.stats.functional,
+          faulty: overview.stats.faulty,
+          underRepair: overview.stats.underRepair,
+          totalReports: overview.stats.totalReports,
+          pendingReports: overview.stats.pendingReports,
+          verifiedReports: overview.stats.verifiedReports,
+          resolvedReports: overview.stats.resolvedReports,
+        });
+        setRecentWaterpoints(overview.recentWaterpoints as Waterpoint[]);
+      } catch {
+        setRecentWaterpoints([]);
+      }
       setLoading(false);
     }
     fetch();

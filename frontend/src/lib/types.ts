@@ -12,6 +12,7 @@ export interface Waterpoint {
   lga: string;
   description: string;
   photo_url: string;
+  photo_urls: string[];
   created_at: string;
   updated_at: string;
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../components/ui/ToastProvider';
+import { createFaultReport, listFaultReports } from '../../lib/faultReportsApi';
+import { listWaterpoints } from '../../lib/waterpointsApi';
 import {
   AlertTriangle,
   Clock,
@@ -59,20 +60,15 @@ export default function CitizenReportsPage() {
   const [locating, setLocating] = useState(false);
 
   const fetchReports = useCallback(async () => {
-    if (!profile?.phone) { setLoading(false); return; }
     setLoading(true);
-    const { data, error } = await supabase
-      .from('fault_reports')
-      .select('*, waterpoints(name)')
-      .eq('reporter_phone', profile.phone)
-      .order('created_at', { ascending: false });
-    if (error) {
+    try {
+      const data = await listFaultReports({ limit: 100 });
+      setReports((data.items as FaultReport[]) || []);
+    } catch {
       toast('error', 'Failed to load your reports.');
-    } else {
-      setReports((data as FaultReport[]) || []);
     }
     setLoading(false);
-  }, [profile?.phone, toast]);
+  }, [toast]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
@@ -107,22 +103,21 @@ export default function CitizenReportsPage() {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from('fault_reports').insert({
-      waterpoint_id: form.waterpointId || null,
-      reporter_name: profile.full_name,
-      reporter_phone: profile.phone,
-      description: form.description.trim(),
-      community: form.community.trim() || profile.community,
-      latitude: form.latitude ? parseFloat(form.latitude) : null,
-      longitude: form.longitude ? parseFloat(form.longitude) : null,
-      status: 'pending',
-    });
-    setSubmitting(false);
-    if (error) {
-      toast('error', 'Failed to submit report. Please try again.');
-    } else {
+    try {
+      await createFaultReport({
+        ...(form.waterpointId ? { waterpointId: form.waterpointId } : {}),
+        reporterName: profile.full_name,
+        reporterPhone: profile.phone,
+        description: form.description.trim(),
+        community: form.community.trim() || profile.community || '',
+        ...(form.latitude ? { latitude: parseFloat(form.latitude) } : {}),
+        ...(form.longitude ? { longitude: parseFloat(form.longitude) } : {}),
+      });
       toast('success', 'Fault report submitted! The Water Corporation will review it.');
+    } catch {
+      toast('error', 'Failed to submit report. Please try again.');
     }
+    setSubmitting(false);
     setModalOpen(false);
     setForm({ description: '', waterpointId: '', community: '', latitude: '', longitude: '' });
     fetchReports();
@@ -131,9 +126,13 @@ export default function CitizenReportsPage() {
   // Fetch waterpoints for the dropdown
   const [waterpoints, setWaterpoints] = useState<Array<{ id: string; name: string }>>([]);
   useEffect(() => {
-    supabase.from('waterpoints').select('id, name').order('name').then(({ data }) => {
-      setWaterpoints((data as Array<{ id: string; name: string }>) || []);
-    });
+    listWaterpoints({ limit: 100 })
+      .then((data) => {
+        setWaterpoints(data.items.map((item) => ({ id: item.id, name: item.name })));
+      })
+      .catch(() => {
+        setWaterpoints([]);
+      });
   }, []);
 
   const openGoogleMaps = (lat: number, lng: number) => {

@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
+import { ApiError } from '../../lib/apiClient';
+import { createWaterpoint, deleteWaterpoint, listWaterpoints, updateWaterpoint } from '../../lib/waterpointsApi';
+import { uploadImages } from '../../lib/uploadsApi';
 import type { Waterpoint, WaterpointType, WaterpointStatus } from '../../lib/types';
 import { useToast } from '../../components/ui/ToastProvider';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
@@ -35,11 +37,12 @@ interface FormData {
   community: string;
   lga: string;
   description: string;
+  photoUrls: string[];
 }
 
 const emptyForm: FormData = {
   name: '', type: 'borehole', status: 'functional',
-  latitude: '', longitude: '', community: '', lga: '', description: '',
+  latitude: '', longitude: '', community: '', lga: '', description: '', photoUrls: [],
 };
 
 export default function WaterpointsPage() {
@@ -55,6 +58,7 @@ export default function WaterpointsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Waterpoint | null>(null);
@@ -62,14 +66,15 @@ export default function WaterpointsPage() {
 
   const fetchWaterpoints = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('waterpoints').select('*').order('name');
-    if (filterStatus !== 'all') query = query.eq('status', filterStatus);
-    if (filterType !== 'all') query = query.eq('type', filterType);
-    const { data, error } = await query;
-    if (error) {
+    try {
+      const data = await listWaterpoints({
+        ...(filterStatus !== 'all' ? { status: filterStatus } : {}),
+        ...(filterType !== 'all' ? { type: filterType } : {}),
+        limit: 100,
+      });
+      setWaterpoints(data.items);
+    } catch {
       toast('error', 'Failed to load water points.');
-    } else {
-      setWaterpoints((data as Waterpoint[]) || []);
     }
     setLoading(false);
   }, [filterStatus, filterType, toast]);
@@ -93,9 +98,35 @@ export default function WaterpointsPage() {
     setForm({
       name: wp.name, type: wp.type, status: wp.status,
       latitude: String(wp.latitude), longitude: String(wp.longitude),
-      community: wp.community, lga: wp.lga, description: wp.description,
+      community: wp.community,
+      lga: wp.lga,
+      description: wp.description,
+      photoUrls: wp.photo_urls || (wp.photo_url ? [wp.photo_url] : []),
     });
     setModalOpen(true);
+  };
+
+  const handlePhotoUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const fileList = Array.from(files);
+    if (fileList.length > 5) {
+      toast('error', 'You can upload at most 5 images.');
+      return;
+    }
+    setUploadingPhoto(true);
+    try {
+      const result = await uploadImages(fileList);
+      const imageUrls = result.imageUrls && result.imageUrls.length > 0
+        ? result.imageUrls
+        : [result.imageUrl];
+      setForm((prev) => ({ ...prev, photoUrls: imageUrls.slice(0, 5) }));
+      toast('success', `${imageUrls.length} image(s) uploaded successfully.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Image upload failed.';
+      toast('error', message);
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleSave = async () => {
@@ -120,22 +151,30 @@ export default function WaterpointsPage() {
       community: form.community.trim(),
       lga: form.lga.trim(),
       description: form.description.trim(),
-      updated_at: new Date().toISOString(),
+      photoUrls: form.photoUrls,
     };
 
     if (editingId) {
-      const { error } = await supabase.from('waterpoints').update(payload).eq('id', editingId);
-      if (error) {
-        toast('error', 'Failed to update water point. Please try again.');
-      } else {
+      try {
+        await updateWaterpoint(editingId, payload);
         toast('success', `"${payload.name}" updated successfully.`);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 403) {
+          toast('error', 'Only admins can update water points.');
+        } else {
+          toast('error', 'Failed to update water point. Please try again.');
+        }
       }
     } else {
-      const { error } = await supabase.from('waterpoints').insert(payload);
-      if (error) {
-        toast('error', 'Failed to add water point. Please try again.');
-      } else {
+      try {
+        await createWaterpoint(payload);
         toast('success', `"${payload.name}" added successfully.`);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 403) {
+          toast('error', 'Only admins can add water points.');
+        } else {
+          toast('error', 'Failed to add water point. Please try again.');
+        }
       }
     }
     setSaving(false);
@@ -146,13 +185,17 @@ export default function WaterpointsPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    const { error } = await supabase.from('waterpoints').delete().eq('id', deleteTarget.id);
-    setDeleting(false);
-    if (error) {
-      toast('error', 'Failed to delete water point. Please try again.');
-    } else {
+    try {
+      await deleteWaterpoint(deleteTarget.id);
       toast('success', `"${deleteTarget.name}" deleted.`);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        toast('error', 'Only admins can delete water points.');
+      } else {
+        toast('error', 'Failed to delete water point. Please try again.');
+      }
     }
+    setDeleting(false);
     setDeleteTarget(null);
     fetchWaterpoints();
   };
@@ -402,6 +445,40 @@ export default function WaterpointsPage() {
                   placeholder="Optional description of the water point..."
                 />
               </Field>
+
+              <Field label="Photos (optional, max 5)">
+                <div className="space-y-3">
+                  {form.photoUrls.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {form.photoUrls.map((url) => (
+                        <div key={url} className="rounded-xl overflow-hidden border border-slate-200/60">
+                          <img
+                            src={url}
+                            alt="Water point"
+                            className="w-full h-28 object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-slate-50 border border-slate-200/60 p-6 text-center text-sm text-slate-400">
+                      No image selected
+                    </div>
+                  )}
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => void handlePhotoUpload(e.target.files)}
+                    disabled={uploadingPhoto}
+                    className="w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-200"
+                  />
+                  {uploadingPhoto ? (
+                    <p className="text-xs text-slate-500">Uploading images...</p>
+                  ) : null}
+                </div>
+              </Field>
             </div>
 
             <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-3">
@@ -413,7 +490,7 @@ export default function WaterpointsPage() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving || !form.name.trim() || !form.latitude || !form.longitude}
+                disabled={saving || uploadingPhoto || !form.name.trim() || !form.latitude || !form.longitude}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}

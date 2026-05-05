@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
+import { getCitizenOverview } from '../../lib/analyticsApi';
 import {
   MapPin,
   AlertTriangle,
@@ -36,34 +36,26 @@ export default function CitizenOverview() {
   useEffect(() => {
     async function fetch() {
       setLoading(true);
-      const [wpRes, myReportsRes, commentsRes] = await Promise.all([
-        supabase.from('waterpoints').select('status'),
-        supabase.from('fault_reports').select('status, reporter_phone'),
-        supabase.from('comments').select('id'),
-      ]);
-
-      const wps = wpRes.data || [];
-      const myPhone = profile?.phone || '';
-      const myReports = (myReportsRes.data || []).filter((r: { reporter_phone: string }) => r.reporter_phone === myPhone);
-
-      setStats({
-        totalWaterpoints: wps.length,
-        functional: wps.filter((w: { status: string }) => w.status === 'functional').length,
-        faulty: wps.filter((w: { status: string }) => w.status === 'faulty').length,
-        underRepair: wps.filter((w: { status: string }) => w.status === 'under_repair').length,
-        myReports: myReports.length,
-        pendingReports: myReports.filter((r: { status: string }) => r.status === 'pending').length,
-        resolvedReports: myReports.filter((r: { status: string }) => r.status === 'resolved' || r.status === 'verified').length,
-        communityComments: (commentsRes.data || []).length,
-      });
-
-      // Fetch nearby waterpoints (same community if set)
-      let nearbyQuery = supabase.from('waterpoints').select('id, name, type, status, community').order('name').limit(6);
-      if (profile?.community) {
-        nearbyQuery = nearbyQuery.eq('community', profile.community);
+      try {
+        const overview = await getCitizenOverview();
+        setStats((prev) => ({
+          ...prev,
+          totalWaterpoints: overview.stats.totalWaterpoints,
+          functional: overview.stats.functional,
+          faulty: overview.stats.faulty,
+          underRepair: overview.stats.underRepair,
+          myReports: overview.stats.myReports,
+          pendingReports: overview.stats.pendingReports,
+          resolvedReports: overview.stats.resolvedReports,
+          communityComments: 0,
+        }));
+        const nearby = profile?.community
+          ? overview.nearbyWaterpoints.filter((wp) => wp.community === profile.community)
+          : overview.nearbyWaterpoints;
+        setNearbyWaterpoints(nearby);
+      } catch {
+        setNearbyWaterpoints([]);
       }
-      const { data: nearby } = await nearbyQuery;
-      setNearbyWaterpoints((nearby as Array<{ id: string; name: string; type: string; status: string; community: string }>) || []);
 
       setLoading(false);
     }

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Droplets, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
+import { Droplets, Eye, EyeOff, Loader2, CheckCircle2, Mail } from 'lucide-react';
 
 export default function RegisterPage() {
   const { signUpAdmin } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [inviteToken, setInviteToken] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -22,8 +23,12 @@ export default function RegisterPage() {
       setError('Password must be at least 6 characters.');
       return;
     }
+    if (!inviteToken.trim()) {
+      setError('Admin invite token is required.');
+      return;
+    }
     setSubmitting(true);
-    const { error: err } = await signUpAdmin(email, password, fullName);
+    const { error: err } = await signUpAdmin(email, password, fullName, inviteToken.trim());
     setSubmitting(false);
     if (err) {
       setError(err === 'User already registered' ? 'An account with this email already exists.' : err);
@@ -34,23 +39,52 @@ export default function RegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-        <div className="max-w-md w-full text-center">
-          <div className="w-16 h-16 rounded-2xl bg-teal-100 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-8 h-8 text-teal-700" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+        <div className="max-w-lg w-full">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-teal-100 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="w-8 h-8 text-teal-700" />
+            </div>
+            <h2 className="font-heading font-800 text-2xl text-slate-900 tracking-tight mb-3">
+              Admin account created
+            </h2>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              Your account was created with the invite you provided. A verification email has been sent to the address
+              you registered with.
+            </p>
           </div>
-          <h2 className="font-heading font-800 text-2xl text-slate-900 tracking-tight mb-3">
-            Account created successfully
-          </h2>
-          <p className="text-slate-500 mb-8">
-            Your admin account has been registered. You can now sign in to access the dashboard.
-          </p>
-          <Link
-            to="/login"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold shadow-sm transition-all"
-          >
-            Sign in now
-          </Link>
+
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 text-left shadow-sm">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-200/60 flex items-center justify-center flex-shrink-0">
+                <Mail className="w-5 h-5 text-cyan-700" />
+              </div>
+              <div>
+                <h3 className="font-heading font-700 text-sm text-slate-900">Verify your email first</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Check your inbox and spam folder for a message from WaterWatch. Click the verification link, then sign
+                  in on the admin login page.
+                </p>
+              </div>
+            </div>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-slate-700">
+              <li>Open the verification email.</li>
+              <li>Confirm your email address using the link provided.</li>
+              <li>Sign in at the admin login page with your new password.</li>
+            </ol>
+          </div>
+
+          <div className="mt-8 text-center">
+            <Link
+              to="/login"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold shadow-sm transition-all"
+            >
+              Go to admin sign in
+            </Link>
+            <p className="text-xs text-slate-400 mt-4">
+              Sign-in will only work after your email is verified.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -93,8 +127,17 @@ export default function RegisterPage() {
             Create your account
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            Register to access the Water Corporation admin dashboard.
+            Register with your admin invite token to access the Water Corporation dashboard.
           </p>
+
+          <div className="mt-6 p-4 rounded-xl bg-slate-100/80 border border-slate-200/80 flex gap-3">
+            <Mail className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-slate-600 leading-relaxed">
+              <span className="font-semibold text-slate-800">Use the same email the invite was issued for,</span> and
+              paste the one-time token your administrator shared. After registering, you must verify your email before
+              you can sign in.
+            </p>
+          </div>
 
           {error && (
             <div className="mt-6 p-3.5 rounded-xl bg-red-50 border border-red-200/60 text-sm text-red-700">
@@ -130,6 +173,21 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm"
                 placeholder="admin@waterwatch.kw.gov.ng"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="inviteToken" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Admin invite token
+              </label>
+              <input
+                id="inviteToken"
+                type="text"
+                required
+                value={inviteToken}
+                onChange={(e) => setInviteToken(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm"
+                placeholder="Paste invite token from admin"
               />
             </div>
 

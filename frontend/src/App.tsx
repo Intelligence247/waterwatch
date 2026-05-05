@@ -12,6 +12,7 @@ import AdminLayout from './components/admin/AdminLayout';
 import DashboardOverview from './pages/admin/DashboardOverview';
 import WaterpointsPage from './pages/admin/WaterpointsPage';
 import ReportsPage from './pages/admin/ReportsPage';
+import AdminInvitesPage from './pages/admin/AdminInvitesPage';
 import CitizenLayout from './components/citizen/CitizenLayout';
 import CitizenOverview from './pages/citizen/CitizenOverview';
 import CitizenExplorePage from './pages/citizen/CitizenExplorePage';
@@ -64,6 +65,7 @@ function AppRoutes() {
         <Route index element={<DashboardOverview />} />
         <Route path="waterpoints" element={<WaterpointsPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="invites" element={<AdminInvitesPage />} />
       </Route>
 
       {/* Citizen Dashboard */}

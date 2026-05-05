@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '../../lib/supabase';
-import { useAuth } from '../../contexts/AuthContext';
+import { listFaultReports, updateFaultReportStatus } from '../../lib/faultReportsApi';
 import { useToast } from '../../components/ui/ToastProvider';
 import {
   Search,
@@ -46,7 +45,6 @@ const statusConfig: Record<ReportStatus, { label: string; color: string; bg: str
 };
 
 export default function ReportsPage() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [reports, setReports] = useState<FaultReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,15 +57,18 @@ export default function ReportsPage() {
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
-    let query = supabase
-      .from('fault_reports')
-      .select('*, waterpoints(name)')
-      .order('created_at', { ascending: false });
-    if (filterStatus !== 'all') query = query.eq('status', filterStatus);
-    const { data } = await query;
-    setReports((data as FaultReport[]) || []);
+    try {
+      const data = await listFaultReports({
+        ...(filterStatus !== 'all' ? { status: filterStatus } : {}),
+        limit: 100,
+      });
+      setReports(data.items as FaultReport[]);
+    } catch {
+      toast('error', 'Failed to load reports.');
+      setReports([]);
+    }
     setLoading(false);
-  }, [filterStatus]);
+  }, [filterStatus, toast]);
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
@@ -83,21 +84,14 @@ export default function ReportsPage() {
 
   const updateStatus = async (reportId: string, newStatus: ReportStatus) => {
     setUpdating(true);
-    const { error } = await supabase
-      .from('fault_reports')
-      .update({
-        status: newStatus,
-        reviewed_by: user?.id,
-        reviewed_at: new Date().toISOString(),
-      })
-      .eq('id', reportId);
-    setUpdating(false);
-    if (error) {
-      toast('error', 'Failed to update report status. Please try again.');
-    } else {
+    try {
+      await updateFaultReportStatus(reportId, { status: newStatus });
       const labels: Record<ReportStatus, string> = { pending: 'reopened', verified: 'verified', dismissed: 'dismissed', resolved: 'marked as resolved' };
       toast('success', `Report ${labels[newStatus]} successfully.`);
+    } catch {
+      toast('error', 'Failed to update report status. Please try again.');
     }
+    setUpdating(false);
     setSelectedReport(null);
     fetchReports();
   };

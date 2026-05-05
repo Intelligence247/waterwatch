@@ -10,18 +10,21 @@ import {
   Menu,
   X,
   ChevronRight,
+  UserPlus,
 } from 'lucide-react';
 
 const sidebarLinks = [
   { to: '/admin', icon: LayoutDashboard, label: 'Overview', end: true },
   { to: '/admin/waterpoints', icon: MapPin, label: 'Water Points', end: false },
   { to: '/admin/reports', icon: AlertTriangle, label: 'Fault Reports', end: false },
+  { to: '/admin/invites', icon: UserPlus, label: 'Admin invites', end: false },
 ];
 
 const breadcrumbMap: Record<string, string> = {
   '/admin': 'Overview',
   '/admin/waterpoints': 'Water Points',
   '/admin/reports': 'Fault Reports',
+  '/admin/invites': 'Admin invites',
 };
 
 export default function AdminLayout() {
@@ -56,9 +59,9 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ${
+          sidebarOpen ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full'
+        } lg:translate-x-0`}
       >
         {/* Logo */}
         <div className="h-16 flex items-center gap-2.5 px-5 border-b border-slate-100 flex-shrink-0">

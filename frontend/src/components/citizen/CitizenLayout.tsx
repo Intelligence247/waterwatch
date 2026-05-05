@@ -60,9 +60,9 @@ export default function CitizenLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ${
+          sidebarOpen ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full'
+        } lg:translate-x-0`}
       >
         {/* Logo */}
         <div className="h-16 flex items-center gap-2.5 px-5 border-b border-slate-100 flex-shrink-0">

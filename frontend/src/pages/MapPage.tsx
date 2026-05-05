@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { supabase } from '../lib/supabase';
+import { listWaterpoints } from '../lib/waterpointsApi';
 import type { Waterpoint, WaterpointStatus, WaterpointType } from '../lib/types';
 import {
   Navigation,
@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Wrench,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 // Fix leaflet default marker icon issue
@@ -84,14 +86,20 @@ export default function MapPage() {
   const [filterType, setFilterType] = useState<WaterpointType | 'all'>('all');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const fetchWaterpoints = useCallback(async () => {
     setLoading(true);
-    let query = supabase.from('waterpoints').select('*').order('name');
-    if (filterStatus !== 'all') query = query.eq('status', filterStatus);
-    if (filterType !== 'all') query = query.eq('type', filterType);
-    const { data, error } = await query;
-    if (!error && data) setWaterpoints(data as Waterpoint[]);
+    try {
+      const result = await listWaterpoints({
+        ...(filterStatus !== 'all' ? { status: filterStatus } : {}),
+        ...(filterType !== 'all' ? { type: filterType } : {}),
+        limit: 100,
+      });
+      setWaterpoints(result.items);
+    } catch {
+      setWaterpoints([]);
+    }
     setLoading(false);
   }, [filterStatus, filterType]);
 
@@ -101,6 +109,7 @@ export default function MapPage() {
 
   const handleMarkerClick = (point: Waterpoint) => {
     setSelectedPoint(point);
+    setCurrentImageIndex(0);
     setFlyTo({ lat: point.latitude, lng: point.longitude });
     setMobileDetailOpen(true);
   };
@@ -113,6 +122,27 @@ export default function MapPage() {
   };
 
   const filteredPoints = waterpoints;
+  const selectedImages =
+    selectedPoint?.photo_urls && selectedPoint.photo_urls.length > 0
+      ? selectedPoint.photo_urls
+      : selectedPoint?.photo_url
+        ? [selectedPoint.photo_url]
+        : [];
+  const hasMultipleImages = selectedImages.length > 1;
+  const previousImage = () => {
+    if (!selectedImages.length) return;
+    setCurrentImageIndex((prev) => (prev === 0 ? selectedImages.length - 1 : prev - 1));
+  };
+  const nextImage = () => {
+    if (!selectedImages.length) return;
+    setCurrentImageIndex((prev) => (prev === selectedImages.length - 1 ? 0 : prev + 1));
+  };
+
+  useEffect(() => {
+    if (currentImageIndex >= selectedImages.length) {
+      setCurrentImageIndex(0);
+    }
+  }, [currentImageIndex, selectedImages.length]);
 
   return (
     <div className="h-screen flex flex-col bg-slate-50">
@@ -322,13 +352,36 @@ export default function MapPage() {
               </div>
 
               {/* Photo */}
-              {selectedPoint.photo_url ? (
+              {selectedImages.length > 0 ? (
                 <div className="rounded-xl overflow-hidden mb-5 border border-slate-200/60">
-                  <img
-                    src={selectedPoint.photo_url}
-                    alt={selectedPoint.name}
-                    className="w-full aspect-video object-cover"
-                  />
+                  <div className="relative">
+                    <img
+                      src={selectedImages[currentImageIndex]}
+                      alt={`${selectedPoint.name} ${currentImageIndex + 1}`}
+                      className="w-full aspect-video object-cover"
+                    />
+                    {hasMultipleImages && (
+                      <>
+                        <button
+                          onClick={previousImage}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={nextImage}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {hasMultipleImages && (
+                    <div className="bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
+                      Image {currentImageIndex + 1} of {selectedImages.length}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-xl bg-slate-50 border border-slate-200/60 mb-5 flex items-center justify-center aspect-video">
@@ -422,6 +475,35 @@ export default function MapPage() {
                   {typeLabels[selectedPoint.type]}
                 </span>
               </div>
+
+              {/* Details */}
+              {selectedImages.length > 0 && (
+                <div className="rounded-xl overflow-hidden mb-4 border border-slate-200/60">
+                  <div className="relative">
+                    <img
+                      src={selectedImages[currentImageIndex]}
+                      alt={`${selectedPoint.name} ${currentImageIndex + 1}`}
+                      className="w-full aspect-video object-cover"
+                    />
+                    {hasMultipleImages && (
+                      <>
+                        <button
+                          onClick={previousImage}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={nextImage}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-1.5 text-white"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Details */}
               <div className="space-y-3 mb-5">

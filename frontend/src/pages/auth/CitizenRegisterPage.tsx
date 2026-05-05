@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Droplets, Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
+import { Droplets, Eye, EyeOff, Loader2, CheckCircle2, Mail } from 'lucide-react';
 
 export default function CitizenRegisterPage() {
   const { signUpCitizen } = useAuth();
@@ -36,23 +36,51 @@ export default function CitizenRegisterPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-        <div className="max-w-md w-full text-center">
-          <div className="w-16 h-16 rounded-2xl bg-teal-100 flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-8 h-8 text-teal-700" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+        <div className="max-w-lg w-full">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-teal-100 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="w-8 h-8 text-teal-700" />
+            </div>
+            <h2 className="font-heading font-800 text-2xl text-slate-900 tracking-tight mb-3">
+              Account created
+            </h2>
+            <p className="text-slate-600 text-sm leading-relaxed">
+              We have sent a verification message to your email address. Please confirm your account before signing in.
+            </p>
           </div>
-          <h2 className="font-heading font-800 text-2xl text-slate-900 tracking-tight mb-3">
-            Welcome to WaterWatch
-          </h2>
-          <p className="text-slate-500 mb-8">
-            Your citizen account has been created. Sign in to report water issues and explore your community's water points.
-          </p>
-          <Link
-            to="/citizen/login"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold shadow-sm transition-all"
-          >
-            Sign in now
-          </Link>
+
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 text-left shadow-sm">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-200/60 flex items-center justify-center flex-shrink-0">
+                <Mail className="w-5 h-5 text-cyan-700" />
+              </div>
+              <div>
+                <h3 className="font-heading font-700 text-sm text-slate-900">Check your inbox</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Open the email you used to register and follow the verification link. If you do not see it within a few
+                  minutes, check your spam or junk folder.
+                </p>
+              </div>
+            </div>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-slate-700">
+              <li>Find the verification email from WaterWatch.</li>
+              <li>Click the link to verify your address.</li>
+              <li>Return here and sign in with your email and password.</li>
+            </ol>
+          </div>
+
+          <div className="mt-8 text-center">
+            <Link
+              to="/citizen/login"
+              className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold shadow-sm transition-all"
+            >
+              Go to sign in
+            </Link>
+            <p className="text-xs text-slate-400 mt-4">
+              You must verify your email before you can sign in.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -97,6 +125,14 @@ export default function CitizenRegisterPage() {
           <p className="mt-2 text-sm text-slate-500">
             Register to report water issues and explore water points in your area.
           </p>
+
+          <div className="mt-6 p-4 rounded-xl bg-slate-100/80 border border-slate-200/80 flex gap-3">
+            <Mail className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-slate-600 leading-relaxed">
+              <span className="font-semibold text-slate-800">Email verification is required.</span> After you submit this
+              form, check your email for a verification link. You will need to verify before you can sign in.
+            </p>
+          </div>
 
           {error && (
             <div className="mt-6 p-3.5 rounded-xl bg-red-50 border border-red-200/60 text-sm text-red-700">

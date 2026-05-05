@@ -80,12 +80,6 @@ export default function Navbar() {
             >
               Citizen Login
             </Link>
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold shadow-sm hover:shadow-md transition-all"
-            >
-              Admin Dashboard
-            </Link>
           </div>
 
           {/* Mobile Toggle */}
@@ -130,13 +124,6 @@ export default function Navbar() {
                 className="block px-4 py-3 rounded-xl text-sm font-medium text-cyan-700 hover:bg-cyan-50 transition-colors"
               >
                 Citizen Login
-              </Link>
-              <Link
-                to="/login"
-                onClick={() => setMobileOpen(false)}
-                className="block px-4 py-3 rounded-xl bg-cyan-500 text-white text-sm font-semibold text-center hover:bg-cyan-600 transition-colors"
-              >
-                Admin Dashboard
               </Link>
             </div>
           </div>
