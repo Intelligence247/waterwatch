@@ -7,6 +7,15 @@ let configured = false;
 function ensureCloudinaryConfigured() {
   if (configured) return;
   const env = loadEnv();
+  const missing = [];
+  if (!env.CLOUDINARY_CLOUD_NAME) missing.push("CLOUDINARY_CLOUD_NAME");
+  if (!env.CLOUDINARY_API_KEY) missing.push("CLOUDINARY_API_KEY");
+  if (!env.CLOUDINARY_API_SECRET) missing.push("CLOUDINARY_API_SECRET");
+
+  if (missing.length > 0) {
+    throw new Error(`Cloudinary is not configured. Missing: ${missing.join(", ")}`);
+  }
+
   cloudinary.config({
     cloud_name: env.CLOUDINARY_CLOUD_NAME,
     api_key: env.CLOUDINARY_API_KEY,

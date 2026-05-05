@@ -16,6 +16,14 @@ const VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
 const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 const REFRESH_COOKIE_NAME = "refreshToken";
 
+function getBackendPublicUrl(env) {
+  if (!env.BACKEND_PUBLIC_URL) {
+    throw new HttpError(500, "Email links are not configured on this server");
+  }
+
+  return env.BACKEND_PUBLIC_URL;
+}
+
 function toPublicUser(user) {
   return {
     id: String(user._id),
@@ -54,7 +62,7 @@ async function createAndSendVerification(user, env) {
   user.emailVerificationExpiresAt = new Date(Date.now() + VERIFICATION_TTL_MS);
   await user.save();
 
-  const verificationUrl = `${env.BACKEND_PUBLIC_URL}/api/auth/verify-email?token=${rawToken}`;
+  const verificationUrl = `${getBackendPublicUrl(env)}/api/auth/verify-email?token=${rawToken}`;
   await sendVerificationEmail({
     to: user.email,
     fullName: user.fullName,
@@ -68,7 +76,7 @@ async function createAndSendPasswordReset(user, env) {
   user.passwordResetExpiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
   await user.save();
 
-  const resetUrl = `${env.BACKEND_PUBLIC_URL}/api/auth/reset-password?token=${rawToken}`;
+  const resetUrl = `${getBackendPublicUrl(env)}/api/auth/reset-password?token=${rawToken}`;
   await sendPasswordResetEmail({
     to: user.email,
     fullName: user.fullName,

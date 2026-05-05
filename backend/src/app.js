@@ -11,18 +11,42 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { notFound } from "./middleware/notFound.js";
 import { apiRouter } from "./routes/index.js";
 
+function parseAllowedOrigins(clientOriginEnv) {
+  return clientOriginEnv
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function createApp(env) {
   const app = express();
 
   app.disable("x-powered-by");
   app.use(helmet());
 
-  const corsOrigin = env.NODE_ENV === "production" ? (env.CLIENT_ORIGIN ?? false) : true;
+  const allowedOrigins = parseAllowedOrigins(env.CLIENT_ORIGIN);
+  const isProduction = env.NODE_ENV === "production";
+  const corsOrigin = !isProduction
+    ? true
+    : (origin, callback) => {
+        // Allow direct non-browser/server-to-server calls with no Origin header.
+        if (!origin) {
+          callback(null, true);
+          return;
+        }
+
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error("Not allowed by CORS"));
+      };
 
   app.use(
     cors({
       origin: corsOrigin,
-      credentials: corsOrigin !== false,
+      credentials: true,
     }),
   );
   app.use(compression());

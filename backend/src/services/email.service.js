@@ -3,9 +3,23 @@ import { loadEnv } from "../config/env.js";
 
 let transporter;
 
+function assertEmailConfig(env) {
+  const missing = [];
+  if (!env.EMAIL_USER) missing.push("EMAIL_USER");
+  if (!env.EMAIL_PASS) missing.push("EMAIL_PASS");
+  if (!env.EMAIL_HOST) missing.push("EMAIL_HOST");
+  if (!env.EMAIL_FROM) missing.push("EMAIL_FROM");
+  if (!env.EMAIL_FROM_NAME) missing.push("EMAIL_FROM_NAME");
+
+  if (missing.length > 0) {
+    throw new Error(`Email service is not configured. Missing: ${missing.join(", ")}`);
+  }
+}
+
 function getTransporter() {
   if (!transporter) {
     const env = loadEnv();
+    assertEmailConfig(env);
     transporter = nodemailer.createTransport({
       host: env.EMAIL_HOST,
       port: env.EMAIL_PORT,
@@ -22,6 +36,7 @@ function getTransporter() {
 
 export async function sendVerificationEmail({ to, fullName, verificationUrl }) {
   const env = loadEnv();
+  assertEmailConfig(env);
   const mailer = getTransporter();
 
   await mailer.sendMail({
@@ -47,6 +62,7 @@ export async function sendVerificationEmail({ to, fullName, verificationUrl }) {
 
 export async function sendPasswordResetEmail({ to, fullName, resetUrl }) {
   const env = loadEnv();
+  assertEmailConfig(env);
   const mailer = getTransporter();
 
   await mailer.sendMail({
@@ -73,6 +89,7 @@ export async function sendPasswordResetEmail({ to, fullName, resetUrl }) {
 
 export async function sendAdminInviteEmail({ to, inviteToken, registerUrl, loginUrl, expiresAt }) {
   const env = loadEnv();
+  assertEmailConfig(env);
   const mailer = getTransporter();
 
   const expiresText = expiresAt ? new Date(expiresAt).toLocaleString("en-NG") : "soon";
