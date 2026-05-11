@@ -1,10 +1,25 @@
 import { useEffect, useState, useCallback } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 import { ApiError } from '../../lib/apiClient';
-import { createWaterpoint, deleteWaterpoint, listWaterpoints, updateWaterpoint } from '../../lib/waterpointsApi';
+import {
+  createWaterpoint,
+  deleteWaterpoint,
+  listWaterpoints,
+  updateWaterpoint,
+} from '../../lib/waterpointsApi';
 import { uploadImages } from '../../lib/uploadsApi';
 import type { Waterpoint, WaterpointType, WaterpointStatus } from '../../lib/types';
 import { useToast } from '../../components/ui/ToastProvider';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import {
+  captureBestPosition,
+  fetchApproximateLocationByNetwork,
+  geolocationFailureMessage,
+  getPositionErrorCode,
+  LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS,
+  normalizeCapturedPosition,
+} from '../../lib/geolocation';
 import {
   Plus,
   Search,
@@ -16,9 +31,20 @@ import {
   Wrench,
   Droplets,
   MapPin,
+  LocateFixed,
   Loader2,
   ChevronDown,
 } from 'lucide-react';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+const KWARA_CENTER: [number, number] = [8.4833, 4.5653];
 
 const statusConfig: Record<WaterpointStatus, { label: string; color: string; bg: string; icon: typeof CheckCircle2 }> = {
   functional: { label: 'Functional', color: 'text-teal-700', bg: 'bg-teal-50 border-teal-200/60', icon: CheckCircle2 },
@@ -45,6 +71,15 @@ const emptyForm: FormData = {
   latitude: '', longitude: '', community: '', lga: '', description: '', photoUrls: [],
 };
 
+function MapClickLayer({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onPick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
 export default function WaterpointsPage() {
   const { toast } = useToast();
   const [waterpoints, setWaterpoints] = useState<Waterpoint[]>([]);
@@ -59,6 +94,12 @@ export default function WaterpointsPage() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [networkLocating, setNetworkLocating] = useState(false);
+  const [capturedAccuracyMeters, setCapturedAccuracyMeters] = useState<number | null>(null);
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
+  const [mapPickerMarker, setMapPickerMarker] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapPickerCenter, setMapPickerCenter] = useState<[number, number]>(KWARA_CENTER);
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState<Waterpoint | null>(null);
@@ -90,6 +131,7 @@ export default function WaterpointsPage() {
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setCapturedAccuracyMeters(null);
     setModalOpen(true);
   };
 
@@ -103,6 +145,7 @@ export default function WaterpointsPage() {
       description: wp.description,
       photoUrls: wp.photo_urls || (wp.photo_url ? [wp.photo_url] : []),
     });
+    setCapturedAccuracyMeters(null);
     setModalOpen(true);
   };
 
@@ -129,6 +172,87 @@ export default function WaterpointsPage() {
     }
   };
 
+  const applyNormalizedCoords = (n: ReturnType<typeof normalizeCapturedPosition>) => {
+    setForm((prev) => ({ ...prev, latitude: n.latitude, longitude: n.longitude }));
+    setCapturedAccuracyMeters(n.capturedAccuracyMeters);
+    if (n.isApproximateNetwork) {
+      toast(
+        'warning',
+        'Approximate network location applied (city-level). Use “Pick on map” for an exact water point.',
+      );
+    } else if (n.capturedAccuracyMeters === null) {
+      toast(
+        'warning',
+        'Location applied with moderate precision. Use “Pick on map” if you need an exact pin.',
+      );
+    } else {
+      toast('success', `Location captured with +/-${Math.round(n.capturedAccuracyMeters)}m accuracy.`);
+    }
+  };
+
+  const handleGetMyLocation = async () => {
+    setLocating(true);
+    try {
+      const position = await captureBestPosition();
+      applyNormalizedCoords(normalizeCapturedPosition(position));
+    } catch (error) {
+      if (getPositionErrorCode(error) === 1) {
+        toast('error', geolocationFailureMessage(error));
+        return;
+      }
+      const guess = await fetchApproximateLocationByNetwork();
+      if (guess) {
+        applyNormalizedCoords(normalizeCapturedPosition(guess));
+        return;
+      }
+      toast('error', geolocationFailureMessage(error));
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const handleNetworkLocation = async () => {
+    setNetworkLocating(true);
+    try {
+      const guess = await fetchApproximateLocationByNetwork();
+      if (!guess) {
+        toast('error', 'Could not resolve network location. Try “Pick on map”.');
+        return;
+      }
+      applyNormalizedCoords(normalizeCapturedPosition(guess));
+    } finally {
+      setNetworkLocating(false);
+    }
+  };
+
+  const openMapPicker = () => {
+    const lat = parseFloat(form.latitude);
+    const lng = parseFloat(form.longitude);
+    if (!Number.isNaN(lat) && !Number.isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      setMapPickerCenter([lat, lng]);
+      setMapPickerMarker({ lat, lng });
+    } else {
+      setMapPickerCenter(KWARA_CENTER);
+      setMapPickerMarker(null);
+    }
+    setMapPickerOpen(true);
+  };
+
+  const confirmMapPicker = () => {
+    if (!mapPickerMarker) {
+      toast('warning', 'Click the map to place a pin first.');
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      latitude: mapPickerMarker.lat.toFixed(6),
+      longitude: mapPickerMarker.lng.toFixed(6),
+    }));
+    setCapturedAccuracyMeters(null);
+    setMapPickerOpen(false);
+    toast('success', 'Coordinates set from map.');
+  };
+
   const handleSave = async () => {
     const lat = parseFloat(form.latitude);
     const lng = parseFloat(form.longitude);
@@ -138,6 +262,10 @@ export default function WaterpointsPage() {
     }
     if (!form.name.trim() || !form.community.trim() || !form.lga.trim()) {
       toast('error', 'Name, community, and LGA are required.');
+      return;
+    }
+    if (capturedAccuracyMeters !== null && capturedAccuracyMeters > LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS) {
+      toast('error', 'Captured location is too inaccurate. Recapture before saving.');
       return;
     }
 
@@ -156,24 +284,40 @@ export default function WaterpointsPage() {
 
     if (editingId) {
       try {
-        await updateWaterpoint(editingId, payload);
+        const result = await updateWaterpoint(editingId, payload);
         toast('success', `"${payload.name}" updated successfully.`);
+        if (result.duplicateReviewWarning) {
+          const distance = result.duplicateReviewWarning.conflict.distanceMeters.toFixed(1);
+          toast(
+            'warning',
+            `Nearby waterpoint found (${distance}m): "${result.duplicateReviewWarning.conflict.name}". Flagged for review.`,
+          );
+        }
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
           toast('error', 'Only admins can update water points.');
         } else {
-          toast('error', 'Failed to update water point. Please try again.');
+          const message = err instanceof ApiError ? err.message : 'Failed to update water point. Please try again.';
+          toast('error', message);
         }
       }
     } else {
       try {
-        await createWaterpoint(payload);
+        const result = await createWaterpoint(payload);
         toast('success', `"${payload.name}" added successfully.`);
+        if (result.duplicateReviewWarning) {
+          const distance = result.duplicateReviewWarning.conflict.distanceMeters.toFixed(1);
+          toast(
+            'warning',
+            `Nearby waterpoint found (${distance}m): "${result.duplicateReviewWarning.conflict.name}". Flagged for review.`,
+          );
+        }
       } catch (err) {
         if (err instanceof ApiError && err.status === 403) {
           toast('error', 'Only admins can add water points.');
         } else {
-          toast('error', 'Failed to add water point. Please try again.');
+          const message = err instanceof ApiError ? err.message : 'Failed to add water point. Please try again.';
+          toast('error', message);
         }
       }
     }
@@ -207,6 +351,12 @@ export default function WaterpointsPage() {
         <div>
           <h1 className="font-heading font-800 text-2xl text-slate-900 tracking-tight">Water Points</h1>
           <p className="text-sm text-slate-500 mt-1">Manage all water infrastructure assets across Kwara State.</p>
+          <a
+            href="/admin/dedupe"
+            className="inline-flex mt-2 text-xs font-semibold text-amber-700 hover:text-amber-800"
+          >
+            Open data integrity workspace
+          </a>
         </div>
         <button
           onClick={openCreate}
@@ -399,7 +549,10 @@ export default function WaterpointsPage() {
                     type="number"
                     step="any"
                     value={form.latitude}
-                    onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, latitude: e.target.value });
+                      setCapturedAccuracyMeters(null);
+                    }}
                     className="field-input"
                     placeholder="8.4833"
                   />
@@ -409,12 +562,52 @@ export default function WaterpointsPage() {
                     type="number"
                     step="any"
                     value={form.longitude}
-                    onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, longitude: e.target.value });
+                      setCapturedAccuracyMeters(null);
+                    }}
                     className="field-input"
                     placeholder="4.5653"
                   />
                 </Field>
               </div>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleGetMyLocation}
+                  disabled={locating || networkLocating}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-sm font-semibold hover:bg-teal-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocateFixed className="w-4 h-4" />}
+                  {locating ? 'Capturing...' : 'Get my location'}
+                </button>
+                <button
+                  type="button"
+                  onClick={openMapPicker}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50"
+                >
+                  <MapPin className="w-4 h-4" />
+                  Pick on map
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleNetworkLocation()}
+                  disabled={locating || networkLocating}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {networkLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Network (approx.)
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 -mt-1">
+                GPS can fail on some Macs; <strong>Pick on map</strong> works everywhere.
+              </p>
+              {capturedAccuracyMeters !== null ? (
+                <p className="text-xs text-slate-500">
+                  Last captured accuracy: +/-{Math.round(capturedAccuracyMeters)}m
+                </p>
+              ) : null}
 
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Community" required>
@@ -496,6 +689,58 @@ export default function WaterpointsPage() {
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 {editingId ? 'Save Changes' : 'Add Water Point'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Map picker — works when device GPS / CoreLocation fails */}
+      {mapPickerOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setMapPickerOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-heading font-700 text-slate-900 text-sm">Pick exact location</h3>
+              <button type="button" onClick={() => setMapPickerOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4">
+              <p className="text-xs text-slate-500 mb-2">Click the map to place the pin, then confirm.</p>
+              <div className="rounded-xl overflow-hidden border border-slate-200" style={{ height: 280 }}>
+                <MapContainer
+                  key={`${mapPickerCenter[0]}-${mapPickerCenter[1]}`}
+                  center={mapPickerCenter}
+                  zoom={16}
+                  className="h-full w-full z-0"
+                  scrollWheelZoom
+                >
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <MapClickLayer onPick={(lat, lng) => setMapPickerMarker({ lat, lng })} />
+                  {mapPickerMarker && (
+                    <Marker position={[mapPickerMarker.lat, mapPickerMarker.lng]} />
+                  )}
+                </MapContainer>
+              </div>
+              <div className="flex justify-end gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => setMapPickerOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmMapPicker}
+                  className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold"
+                >
+                  Use this point
+                </button>
+              </div>
             </div>
           </div>
         </div>

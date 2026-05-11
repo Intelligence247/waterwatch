@@ -4,6 +4,13 @@ import { useToast } from '../../components/ui/ToastProvider';
 import { createFaultReport, listFaultReports } from '../../lib/faultReportsApi';
 import { listWaterpoints } from '../../lib/waterpointsApi';
 import {
+  captureBestPosition,
+  fetchApproximateLocationByNetwork,
+  geolocationFailureMessage,
+  getPositionErrorCode,
+  normalizeCapturedPosition,
+} from '../../lib/geolocation';
+import {
   AlertTriangle,
   Clock,
   CheckCircle2,
@@ -58,6 +65,7 @@ export default function CitizenReportsPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [capturedAccuracyMeters, setCapturedAccuracyMeters] = useState<number | null>(null);
 
   const fetchReports = useCallback(async () => {
     setLoading(true);
@@ -72,28 +80,50 @@ export default function CitizenReportsPage() {
 
   useEffect(() => { fetchReports(); }, [fetchReports]);
 
-  const getMyLocation = () => {
-    if (!navigator.geolocation) {
-      toast('warning', 'Geolocation is not supported by your browser.');
-      return;
-    }
+  const getMyLocation = async () => {
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setForm((prev) => ({
-          ...prev,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6),
-        }));
-        setLocating(false);
-        toast('success', 'Location captured successfully.');
-      },
-      () => {
-        setLocating(false);
-        toast('error', 'Unable to get your location. Please enable location access.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    try {
+      const position = await captureBestPosition();
+      const n = normalizeCapturedPosition(position);
+      setForm((prev) => ({
+        ...prev,
+        latitude: n.latitude,
+        longitude: n.longitude,
+      }));
+      setCapturedAccuracyMeters(n.capturedAccuracyMeters);
+      if (n.isApproximateNetwork) {
+        toast(
+          'warning',
+          'Approximate network location (city-level). Prefer the Explore map to tap an exact spot.',
+        );
+      } else if (n.capturedAccuracyMeters === null) {
+        toast(
+          'warning',
+          'Location applied with moderate precision. Use the Explore map to refine if needed.',
+        );
+      } else {
+        toast('success', `Location captured with +/-${Math.round(n.capturedAccuracyMeters)}m accuracy.`);
+      }
+    } catch (error) {
+      if (getPositionErrorCode(error) === 1) {
+        toast('error', geolocationFailureMessage(error));
+        return;
+      }
+      const guess = await fetchApproximateLocationByNetwork();
+      if (guess) {
+        const n = normalizeCapturedPosition(guess);
+        setForm((prev) => ({ ...prev, latitude: n.latitude, longitude: n.longitude }));
+        setCapturedAccuracyMeters(null);
+        toast(
+          'warning',
+          'GPS unavailable; used approximate network location. Prefer the Explore map for an exact pin.',
+        );
+        return;
+      }
+      toast('error', geolocationFailureMessage(error));
+    } finally {
+      setLocating(false);
+    }
   };
 
   const submitReport = async () => {
@@ -120,6 +150,7 @@ export default function CitizenReportsPage() {
     setSubmitting(false);
     setModalOpen(false);
     setForm({ description: '', waterpointId: '', community: '', latitude: '', longitude: '' });
+    setCapturedAccuracyMeters(null);
     fetchReports();
   };
 
@@ -278,9 +309,14 @@ export default function CitizenReportsPage() {
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-teal-200 bg-teal-50 text-teal-700 text-sm font-semibold hover:bg-teal-100 transition-colors disabled:opacity-60"
                   >
                     {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Locate className="w-4 h-4" />}
-                    {locating ? 'Getting location...' : 'Use My Location'}
+                    {locating ? 'Capturing best location...' : 'Use My Location'}
                   </button>
                 </div>
+                {capturedAccuracyMeters !== null && (
+                  <p className="text-xs text-slate-500 mt-2">
+                    Last captured accuracy: +/-{Math.round(capturedAccuracyMeters)}m
+                  </p>
+                )}
                 {form.latitude && form.longitude && (
                   <p className="text-xs text-slate-500 mt-2 font-mono">
                     {form.latitude}, {form.longitude}

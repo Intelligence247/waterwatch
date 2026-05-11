@@ -83,3 +83,80 @@ export async function getCitizenOverview(req, res) {
     })),
   });
 }
+
+export async function getDuplicateReviewInsights(req, res) {
+  const { days } = req.validated.query;
+  const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+  const [statusAgg, pendingAgingAgg, reviewedAgg] = await Promise.all([
+    Waterpoint.aggregate([
+      {
+        $group: {
+          _id: "$duplicateReviewStatus",
+          count: { $sum: 1 },
+        },
+      },
+    ]),
+    Waterpoint.aggregate([
+      {
+        $match: {
+          duplicateReviewStatus: "pending_review",
+        },
+      },
+      {
+        $project: {
+          duplicateReviewFlaggedAt: 1,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          pendingCount: { $sum: 1 },
+          oldestFlaggedAt: { $min: "$duplicateReviewFlaggedAt" },
+        },
+      },
+    ]),
+    Waterpoint.aggregate([
+      {
+        $match: {
+          duplicateReviewReviewedAt: { $gte: startDate },
+          duplicateReviewStatus: { $in: ["resolved_keep", "resolved_merged"] },
+        },
+      },
+      {
+        $group: {
+          _id: "$duplicateReviewStatus",
+          count: { $sum: 1 },
+          avgDistanceMeters: { $avg: "$duplicateReviewDistanceMeters" },
+        },
+      },
+    ]),
+  ]);
+
+  const statusCount = (status) => statusAgg.find((item) => item._id === status)?.count ?? 0;
+  const reviewedCount = (status) => reviewedAgg.find((item) => item._id === status)?.count ?? 0;
+  const reviewedAvgDistance = (status) =>
+    Number((reviewedAgg.find((item) => item._id === status)?.avgDistanceMeters ?? 0).toFixed(2));
+
+  const pendingMeta = pendingAgingAgg[0] ?? { pendingCount: 0, oldestFlaggedAt: null };
+  const pendingOldestAgeDays = pendingMeta.oldestFlaggedAt
+    ? Math.floor((Date.now() - new Date(pendingMeta.oldestFlaggedAt).getTime()) / (24 * 60 * 60 * 1000))
+    : 0;
+
+  res.json({
+    windowDays: days,
+    stats: {
+      pendingReview: statusCount("pending_review"),
+      resolvedKeep: statusCount("resolved_keep"),
+      resolvedMerged: statusCount("resolved_merged"),
+      clear: statusCount("clear"),
+      totalReviewedInWindow: reviewedCount("resolved_keep") + reviewedCount("resolved_merged"),
+      reviewedKeepInWindow: reviewedCount("resolved_keep"),
+      reviewedMergedInWindow: reviewedCount("resolved_merged"),
+      avgReviewedKeepDistanceMeters: reviewedAvgDistance("resolved_keep"),
+      avgReviewedMergedDistanceMeters: reviewedAvgDistance("resolved_merged"),
+      pendingOldestAgeDays,
+      pendingCount: pendingMeta.pendingCount ?? 0,
+    },
+  });
+}

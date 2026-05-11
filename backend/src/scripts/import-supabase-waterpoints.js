@@ -1,7 +1,7 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import { loadEnv } from "../config/env.js";
-import { Waterpoint } from "../models/waterpoint.model.js";
+import { Waterpoint, buildDuplicateKey, buildLocationHash, normalizeText } from "../models/waterpoint.model.js";
 
 function ensureNumber(value) {
   const n = Number(value);
@@ -23,9 +23,15 @@ function normalizeRow(row) {
   const longitude = ensureNumber(row.longitude);
   if (latitude === null || longitude === null) return null;
 
+  const name = String(row.name ?? "").trim();
+  const community = String(row.community ?? "").trim() || "Unknown";
+  const type = normalizeType(row.type);
+  const locationHash = buildLocationHash(latitude, longitude);
+  const duplicateKey = buildDuplicateKey({ latitude, longitude, type, community });
+
   return {
-    name: String(row.name ?? "").trim(),
-    type: normalizeType(row.type),
+    name,
+    type,
     status: normalizeStatus(row.status),
     latitude,
     longitude,
@@ -33,9 +39,13 @@ function normalizeRow(row) {
       type: "Point",
       coordinates: [longitude, latitude],
     },
-    community: String(row.community ?? "").trim() || "Unknown",
+    community,
     lga: String(row.lga ?? "").trim() || "Unknown",
     description: String(row.description ?? "").trim(),
+    normalizedName: normalizeText(name),
+    normalizedCommunity: normalizeText(community),
+    locationHash,
+    duplicateKey,
     photoUrls: String(row.photo_url ?? row.photoUrl ?? "").trim()
       ? [String(row.photo_url ?? row.photoUrl ?? "").trim()]
       : [],
@@ -86,8 +96,8 @@ async function importWaterpointsFromSupabase() {
 
   const operations = normalized.map((item) => ({
     updateOne: {
-      // Upsert by natural key; keeps script idempotent.
-      filter: { name: item.name, latitude: item.latitude, longitude: item.longitude },
+      // Upsert by duplicate key; keeps script idempotent and aligned with dedupe constraints.
+      filter: { duplicateKey: item.duplicateKey },
       update: { $set: item },
       upsert: true,
     },

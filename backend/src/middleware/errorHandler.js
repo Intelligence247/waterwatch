@@ -32,6 +32,13 @@ export function errorHandler(err, _req, res, _next) {
   }
 
   if (err?.code === 11000) {
+    if (err?.keyPattern?.duplicateKey) {
+      res.status(409).json({
+        error: "Duplicate waterpoint detected for this location, type, and community",
+      });
+      return;
+    }
+
     res.status(409).json({ error: "Duplicate value detected" });
     return;
   }

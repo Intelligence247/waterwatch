@@ -8,6 +8,13 @@ import { ApiError } from '../../lib/apiClient';
 import { createWaterpoint, listWaterpoints } from '../../lib/waterpointsApi';
 import { createFaultReport } from '../../lib/faultReportsApi';
 import {
+  captureBestPosition,
+  fetchApproximateLocationByNetwork,
+  geolocationFailureMessage,
+  getPositionErrorCode,
+  normalizeCapturedPosition,
+} from '../../lib/geolocation';
+import {
   Navigation,
   X,
   Filter,
@@ -140,6 +147,8 @@ export default function CitizenExplorePage() {
   const [wpForm, setWpForm] = useState({ name: '', type: 'borehole' as WaterpointType, community: '', lga: '', description: '' });
   const [wpSubmitting, setWpSubmitting] = useState(false);
   const [wpSuccess, setWpSuccess] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [capturedAccuracyMeters, setCapturedAccuracyMeters] = useState<number | null>(null);
 
   const fetchWaterpoints = useCallback(async () => {
     setLoading(true);
@@ -170,33 +179,70 @@ export default function CitizenExplorePage() {
 
   const handleMapClick = (lat: number, lng: number) => {
     setClickedLatLng({ lat, lng });
+    setCapturedAccuracyMeters(null);
   };
 
   const cancelMode = () => {
     setMapMode('view');
     setClickedLatLng(null);
+    setCapturedAccuracyMeters(null);
     setReportForm({ description: '', waterpointId: '' });
     setWpForm({ name: '', type: 'borehole', community: '', lga: '', description: '' });
     setReportSuccess(false);
     setWpSuccess(false);
   };
 
-  const getMyLocation = () => {
-    if (!navigator.geolocation) {
-      toast('warning', 'Geolocation is not supported by your browser.');
-      return;
+  const getMyLocation = async () => {
+    setLocating(true);
+    try {
+      const position = await captureBestPosition();
+      const n = normalizeCapturedPosition(position);
+      setClickedLatLng({
+        lat: parseFloat(n.latitude),
+        lng: parseFloat(n.longitude),
+      });
+      setFlyTo({
+        lat: parseFloat(n.latitude),
+        lng: parseFloat(n.longitude),
+      });
+      setCapturedAccuracyMeters(n.capturedAccuracyMeters);
+      if (n.isApproximateNetwork) {
+        toast(
+          'warning',
+          'Approximate network location. Click the map to place the exact pin.',
+        );
+      } else if (n.capturedAccuracyMeters === null) {
+        toast(
+          'warning',
+          'Moderate GPS precision. Click the map to adjust the pin if needed.',
+        );
+      } else {
+        toast(
+          'success',
+          `Location captured (+/-${Math.round(n.capturedAccuracyMeters)}m). Click the map to adjust if needed.`,
+        );
+      }
+    } catch (error) {
+      if (getPositionErrorCode(error) === 1) {
+        toast('error', geolocationFailureMessage(error));
+        return;
+      }
+      const guess = await fetchApproximateLocationByNetwork();
+      if (guess) {
+        const n = normalizeCapturedPosition(guess);
+        setClickedLatLng({ lat: parseFloat(n.latitude), lng: parseFloat(n.longitude) });
+        setFlyTo({ lat: parseFloat(n.latitude), lng: parseFloat(n.longitude) });
+        setCapturedAccuracyMeters(null);
+        toast(
+          'warning',
+          'GPS unavailable; jumped to approximate area. Click the map for the exact spot.',
+        );
+        return;
+      }
+      toast('error', geolocationFailureMessage(error));
+    } finally {
+      setLocating(false);
     }
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setClickedLatLng({ lat: position.coords.latitude, lng: position.coords.longitude });
-        setFlyTo({ lat: position.coords.latitude, lng: position.coords.longitude });
-        toast('success', 'Location captured. Click the map to adjust if needed.');
-      },
-      () => {
-        toast('error', 'Unable to get your location. Please enable location access.');
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   };
 
   const submitReport = async () => {
@@ -289,10 +335,11 @@ export default function CitizenExplorePage() {
             </button>
             <button
               onClick={getMyLocation}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-all"
+              disabled={locating}
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-all disabled:opacity-60"
             >
-              <Locate className="w-4 h-4" />
-              Use My Location
+              {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Locate className="w-4 h-4" />}
+              {locating ? 'Capturing best location...' : 'Use My Location'}
             </button>
           </>
         ) : (
@@ -315,6 +362,11 @@ export default function CitizenExplorePage() {
           {mapMode === 'report' ? 'Fault Report Mode' : 'Add Water Point Mode'}
           -- Click the map to set location
         </div>
+      )}
+      {capturedAccuracyMeters !== null && (
+        <p className="text-xs text-slate-500">
+          Last captured accuracy: +/-{Math.round(capturedAccuracyMeters)}m
+        </p>
       )}
 
       {/* Map + Sidebar */}

@@ -1,4 +1,4 @@
-import { Droplets } from 'lucide-react';
+import { WaterWatchLogo } from './brand/WaterWatchLogo';
 
 export default function Footer() {
   return (
@@ -7,13 +7,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 lg:gap-12">
           {/* Brand */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-teal-700 flex items-center justify-center">
-                <Droplets className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-heading font-800 text-lg tracking-tight text-slate-900">
-                Water<span className="text-teal-700">Watch</span>
-              </span>
+            <div className="mb-4">
+              <WaterWatchLogo className="h-10 sm:h-11 w-auto max-w-[240px]" />
             </div>
             <p className="text-sm text-slate-500 leading-relaxed max-w-sm">
               A modern geospatial information system designed for the Kwara State Water Corporation to digitize and monitor community water resources.

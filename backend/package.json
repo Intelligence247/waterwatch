@@ -11,7 +11,8 @@
     "start": "node src/server.js",
     "seed": "node src/scripts/seed.js",
     "seed:reset": "SEED_RESET=true node src/scripts/seed.js",
-    "seed:supabase-waterpoints": "node src/scripts/import-supabase-waterpoints.js"
+    "seed:supabase-waterpoints": "node src/scripts/import-supabase-waterpoints.js",
+    "waterpoints:backfill-keys": "node src/scripts/backfill-waterpoint-keys.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

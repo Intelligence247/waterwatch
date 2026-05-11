@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Droplets } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import { WaterWatchLogo } from './brand/WaterWatchLogo';
 
 const navLinks = [
   { label: 'Features', href: '/#features' },
@@ -40,13 +41,12 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-18">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-teal-700 flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-              <Droplets className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-heading font-800 text-lg tracking-tight text-slate-900">
-              Water<span className="text-teal-700">Watch</span>
-            </span>
+          <Link
+            to="/"
+            className="flex items-center group py-0.5 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/40"
+            aria-label="WaterWatch home"
+          >
+            <WaterWatchLogo className="w-full h-auto max-h-10" />
           </Link>
 
           {/* Desktop Links */}
@@ -78,7 +78,7 @@ export default function Navbar() {
               to="/citizen/login"
               className="text-sm font-medium text-slate-600 hover:text-teal-700 transition-colors px-4 py-2"
             >
-              Citizen Login
+              Login
             </Link>
           </div>
 
@@ -123,7 +123,7 @@ export default function Navbar() {
                 onClick={() => setMobileOpen(false)}
                 className="block px-4 py-3 rounded-xl text-sm font-medium text-cyan-700 hover:bg-cyan-50 transition-colors"
               >
-                Citizen Login
+                Login
               </Link>
             </div>
           </div>

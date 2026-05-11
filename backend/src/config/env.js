@@ -20,6 +20,9 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 characters"),
   JWT_EXPIRES_IN: z.string().default("7d"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("30d"),
+  WATERPOINT_MIN_DISTANCE_METERS: z.coerce.number().int().min(1).max(500).default(10),
+  WATERPOINT_REVIEW_DISTANCE_METERS: z.coerce.number().int().min(1).max(2000).default(30),
+  WATERPOINT_AUDIT_DISTANCE_METERS: z.coerce.number().int().min(1).max(2000).default(50),
   // Optional at app boot; validated by email service when used.
   EMAIL_USER: z.string().email("EMAIL_USER must be a valid email").optional(),
   EMAIL_PASS: z.string().min(1, "EMAIL_PASS is required").optional(),

@@ -4,6 +4,7 @@ const objectIdLike = /^[a-fA-F0-9]{24}$/;
 
 const waterpointType = z.enum(["borehole", "well", "tap"]);
 const waterpointStatus = z.enum(["functional", "faulty", "under_repair"]);
+const duplicateReviewStatus = z.enum(["pending_review", "resolved_keep", "resolved_merged", "clear", "all"]);
 
 const stringTrimmed = z.string().trim();
 
@@ -65,3 +66,44 @@ export const listWaterpointsSchema = z.object({
     sortOrder: z.enum(["asc", "desc"]).default("desc"),
   }),
 });
+
+export const listDuplicateReviewQueueSchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({}).optional(),
+  query: z.object({
+    status: duplicateReviewStatus.default("pending_review"),
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(20),
+    sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  }),
+});
+
+export const listDuplicateAuditSchema = z.object({
+  body: z.object({}).optional(),
+  params: z.object({}).optional(),
+  query: z.object({
+    distanceMeters: z.coerce.number().int().min(1).max(2000).optional(),
+    maxItems: z.coerce.number().int().min(10).max(2000).default(400),
+    type: waterpointType.optional(),
+    community: stringTrimmed.max(120).optional(),
+    includeResolved: z.coerce.boolean().default(false),
+  }),
+});
+
+export const resolveDuplicateReviewSchema = z
+  .object({
+    body: z
+      .object({
+        action: z.enum(["keep", "merge"]),
+        mergeIntoWaterpointId: z.string().regex(objectIdLike, "Invalid mergeIntoWaterpointId").optional(),
+        resolutionNote: z.string().trim().max(500).optional().default(""),
+      })
+      .refine(
+        (body) => (body.action === "merge" ? Boolean(body.mergeIntoWaterpointId) : true),
+        "mergeIntoWaterpointId is required when action is merge",
+      ),
+    query: z.object({}).optional(),
+    params: z.object({
+      id: z.string().regex(objectIdLike, "Invalid waterpoint id"),
+    }),
+  });

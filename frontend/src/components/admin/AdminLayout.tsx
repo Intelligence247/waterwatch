@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  Droplets,
   LayoutDashboard,
   MapPin,
   AlertTriangle,
@@ -11,11 +10,14 @@ import {
   X,
   ChevronRight,
   UserPlus,
+  ShieldAlert,
 } from 'lucide-react';
+import { WaterWatchLogo } from '../brand/WaterWatchLogo';
 
 const sidebarLinks = [
   { to: '/admin', icon: LayoutDashboard, label: 'Overview', end: true },
   { to: '/admin/waterpoints', icon: MapPin, label: 'Water Points', end: false },
+  { to: '/admin/dedupe', icon: ShieldAlert, label: 'Data Integrity', end: false },
   { to: '/admin/reports', icon: AlertTriangle, label: 'Fault Reports', end: false },
   { to: '/admin/invites', icon: UserPlus, label: 'Admin invites', end: false },
 ];
@@ -23,6 +25,7 @@ const sidebarLinks = [
 const breadcrumbMap: Record<string, string> = {
   '/admin': 'Overview',
   '/admin/waterpoints': 'Water Points',
+  '/admin/dedupe': 'Data Integrity',
   '/admin/reports': 'Fault Reports',
   '/admin/invites': 'Admin invites',
 };
@@ -64,16 +67,11 @@ export default function AdminLayout() {
         } lg:translate-x-0`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center gap-2.5 px-5 border-b border-slate-100 flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-teal-700 flex items-center justify-center">
-            <Droplets className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-heading font-800 text-base tracking-tight text-slate-900">
-            Water<span className="text-teal-700">Watch</span>
-          </span>
+        <div className="min-h-16 flex items-center gap-2 px-4 py-3 border-b border-slate-100 flex-shrink-0">
+          <WaterWatchLogo className="h-8 w-auto min-w-0 flex-1 max-h-8" />
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden ml-auto p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
+            className="lg:hidden flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
           >
             <X className="w-4 h-4" />
           </button>

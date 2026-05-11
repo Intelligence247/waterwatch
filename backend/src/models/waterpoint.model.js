@@ -1,5 +1,29 @@
 import mongoose from "mongoose";
 
+const COORDINATE_PRECISION = 6;
+
+function normalizeText(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ");
+}
+
+function roundCoordinate(value) {
+  return Number(Number(value).toFixed(COORDINATE_PRECISION));
+}
+
+function buildLocationHash(latitude, longitude) {
+  return `${roundCoordinate(latitude)}:${roundCoordinate(longitude)}`;
+}
+
+function buildDuplicateKey({ latitude, longitude, type, community }) {
+  const locationHash = buildLocationHash(latitude, longitude);
+  const normalizedCommunity = normalizeText(community);
+  return `${type}|${normalizedCommunity}|${locationHash}`;
+}
+
 const waterpointSchema = new mongoose.Schema(
   {
     name: {
@@ -60,6 +84,64 @@ const waterpointSchema = new mongoose.Schema(
       maxlength: 120,
       index: true,
     },
+    normalizedName: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    normalizedCommunity: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    locationHash: {
+      type: String,
+      default: "",
+      index: true,
+    },
+    duplicateKey: {
+      type: String,
+      default: "",
+      unique: true,
+      index: true,
+    },
+    duplicateReviewStatus: {
+      type: String,
+      enum: ["clear", "pending_review", "resolved_keep", "resolved_merged"],
+      default: "clear",
+      index: true,
+    },
+    duplicateReviewCandidateId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Waterpoint",
+      default: null,
+      index: true,
+    },
+    duplicateReviewDistanceMeters: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
+    duplicateReviewFlaggedAt: {
+      type: Date,
+      default: null,
+    },
+    duplicateReviewReviewedAt: {
+      type: Date,
+      default: null,
+    },
+    duplicateReviewReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+      index: true,
+    },
+    duplicateReviewResolutionNote: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 500,
+    },
     description: {
       type: String,
       default: "",
@@ -102,8 +184,24 @@ waterpointSchema.pre("validate", function syncLocation(next) {
       type: "Point",
       coordinates: [this.longitude, this.latitude],
     };
+
+    this.locationHash = buildLocationHash(this.latitude, this.longitude);
   }
+
+  this.normalizedName = normalizeText(this.name);
+  this.normalizedCommunity = normalizeText(this.community);
+
+  if (typeof this.latitude === "number" && typeof this.longitude === "number" && this.type && this.community) {
+    this.duplicateKey = buildDuplicateKey({
+      latitude: this.latitude,
+      longitude: this.longitude,
+      type: this.type,
+      community: this.community,
+    });
+  }
+
   next();
 });
 
 export const Waterpoint = mongoose.model("Waterpoint", waterpointSchema);
+export { buildDuplicateKey, buildLocationHash, normalizeText, roundCoordinate };

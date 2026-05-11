@@ -47,6 +47,23 @@ type CitizenOverviewResponse = {
   }>;
 };
 
+export type DuplicateReviewInsightsResponse = {
+  windowDays: number;
+  stats: {
+    pendingReview: number;
+    resolvedKeep: number;
+    resolvedMerged: number;
+    clear: number;
+    totalReviewedInWindow: number;
+    reviewedKeepInWindow: number;
+    reviewedMergedInWindow: number;
+    avgReviewedKeepDistanceMeters: number;
+    avgReviewedMergedDistanceMeters: number;
+    pendingOldestAgeDays: number;
+    pendingCount: number;
+  };
+};
+
 function mapRecentWaterpoint(item: BackendRecentWaterpoint): Waterpoint {
   return {
     id: item.id,
@@ -75,4 +92,12 @@ export async function getAdminOverview() {
 
 export async function getCitizenOverview() {
   return api.get<CitizenOverviewResponse>('/api/analytics/citizen-overview', { auth: true });
+}
+
+export async function getDuplicateReviewInsights(days = 30) {
+  const query = new URLSearchParams({ days: String(days) });
+  return api.get<DuplicateReviewInsightsResponse>(
+    `/api/analytics/duplicate-review-insights?${query.toString()}`,
+    { auth: true },
+  );
 }

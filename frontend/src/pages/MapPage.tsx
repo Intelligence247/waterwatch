@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { WaterWatchLogo } from '../components/brand/WaterWatchLogo';
 
 // Fix leaflet default marker icon issue
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -148,13 +149,8 @@ export default function MapPage() {
     <div className="h-screen flex flex-col bg-slate-50">
       {/* Top Bar */}
       <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center gap-3 z-20 flex-shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-teal-700 flex items-center justify-center">
-            <Droplets className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-heading font-700 text-sm tracking-tight text-slate-900 hidden sm:block">
-            WaterWatch
-          </span>
+        <div className="flex items-center min-w-0">
+          <WaterWatchLogo className="h-7 sm:h-8 w-auto max-w-[min(100%,200px)] sm:max-w-[240px]" />
         </div>
 
         <div className="flex-1" />

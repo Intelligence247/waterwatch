@@ -1,3 +1,4 @@
+import { Suspense, lazy, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import type { UserRole } from './contexts/AuthContext';
@@ -9,25 +10,31 @@ import RegisterPage from './pages/auth/RegisterPage';
 import CitizenLoginPage from './pages/auth/CitizenLoginPage';
 import CitizenRegisterPage from './pages/auth/CitizenRegisterPage';
 import AdminLayout from './components/admin/AdminLayout';
-import DashboardOverview from './pages/admin/DashboardOverview';
-import WaterpointsPage from './pages/admin/WaterpointsPage';
-import ReportsPage from './pages/admin/ReportsPage';
-import AdminInvitesPage from './pages/admin/AdminInvitesPage';
 import CitizenLayout from './components/citizen/CitizenLayout';
-import CitizenOverview from './pages/citizen/CitizenOverview';
-import CitizenExplorePage from './pages/citizen/CitizenExplorePage';
-import CitizenReportsPage from './pages/citizen/CitizenReportsPage';
-import CitizenCommunityPage from './pages/citizen/CitizenCommunityPage';
 import { Loader2 } from 'lucide-react';
 
-function RoleRoute({ children, allowedRole, redirectTo }: { children: React.ReactNode; allowedRole: UserRole; redirectTo: string }) {
+const DashboardOverview = lazy(() => import('./pages/admin/DashboardOverview'));
+const WaterpointsPage = lazy(() => import('./pages/admin/WaterpointsPage'));
+const ReportsPage = lazy(() => import('./pages/admin/ReportsPage'));
+const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage'));
+const AdminDedupePage = lazy(() => import('./pages/admin/AdminDedupePage'));
+const CitizenOverview = lazy(() => import('./pages/citizen/CitizenOverview'));
+const CitizenExplorePage = lazy(() => import('./pages/citizen/CitizenExplorePage'));
+const CitizenReportsPage = lazy(() => import('./pages/citizen/CitizenReportsPage'));
+const CitizenCommunityPage = lazy(() => import('./pages/citizen/CitizenCommunityPage'));
+
+function FullScreenLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
+    </div>
+  );
+}
+
+function RoleRoute({ children, allowedRole, redirectTo }: { children: ReactNode; allowedRole: UserRole; redirectTo: string }) {
   const { user, userRole, loading } = useAuth();
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
-      </div>
-    );
+    return <FullScreenLoader />;
   }
   if (!user) return <Navigate to={redirectTo} replace />;
   if (userRole !== allowedRole) {
@@ -41,50 +48,53 @@ function RoleRoute({ children, allowedRole, redirectTo }: { children: React.Reac
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/map" element={<MapPage />} />
+    <Suspense fallback={<FullScreenLoader />}>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/map" element={<MapPage />} />
 
-      {/* Admin Auth */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+        {/* Admin Auth */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
 
-      {/* Citizen Auth */}
-      <Route path="/citizen/login" element={<CitizenLoginPage />} />
-      <Route path="/citizen/register" element={<CitizenRegisterPage />} />
+        {/* Citizen Auth */}
+        <Route path="/citizen/login" element={<CitizenLoginPage />} />
+        <Route path="/citizen/register" element={<CitizenRegisterPage />} />
 
-      {/* Admin Dashboard */}
-      <Route
-        path="/admin"
-        element={
-          <RoleRoute allowedRole="admin" redirectTo="/login">
-            <AdminLayout />
-          </RoleRoute>
-        }
-      >
-        <Route index element={<DashboardOverview />} />
-        <Route path="waterpoints" element={<WaterpointsPage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="invites" element={<AdminInvitesPage />} />
-      </Route>
+        {/* Admin Dashboard */}
+        <Route
+          path="/admin"
+          element={
+            <RoleRoute allowedRole="admin" redirectTo="/login">
+              <AdminLayout />
+            </RoleRoute>
+          }
+        >
+          <Route index element={<DashboardOverview />} />
+          <Route path="waterpoints" element={<WaterpointsPage />} />
+          <Route path="dedupe" element={<AdminDedupePage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="invites" element={<AdminInvitesPage />} />
+        </Route>
 
-      {/* Citizen Dashboard */}
-      <Route
-        path="/citizen"
-        element={
-          <RoleRoute allowedRole="citizen" redirectTo="/citizen/login">
-            <CitizenLayout />
-          </RoleRoute>
-        }
-      >
-        <Route index element={<CitizenOverview />} />
-        <Route path="explore" element={<CitizenExplorePage />} />
-        <Route path="reports" element={<CitizenReportsPage />} />
-        <Route path="community" element={<CitizenCommunityPage />} />
-      </Route>
+        {/* Citizen Dashboard */}
+        <Route
+          path="/citizen"
+          element={
+            <RoleRoute allowedRole="citizen" redirectTo="/citizen/login">
+              <CitizenLayout />
+            </RoleRoute>
+          }
+        >
+          <Route index element={<CitizenOverview />} />
+          <Route path="explore" element={<CitizenExplorePage />} />
+          <Route path="reports" element={<CitizenReportsPage />} />
+          <Route path="community" element={<CitizenCommunityPage />} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

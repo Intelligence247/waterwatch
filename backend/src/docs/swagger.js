@@ -149,6 +149,22 @@ const options = {
                 "https://example.com/waterpoint-2.jpg",
               ],
             },
+            duplicateReview: {
+              type: "object",
+              properties: {
+                status: {
+                  type: "string",
+                  enum: ["clear", "pending_review", "resolved_keep", "resolved_merged"],
+                  example: "pending_review",
+                },
+                candidateWaterpointId: { type: "string", nullable: true },
+                distanceMeters: { type: "number", nullable: true, example: 18.4 },
+                flaggedAt: { type: "string", format: "date-time", nullable: true },
+                reviewedAt: { type: "string", format: "date-time", nullable: true },
+                reviewedBy: { type: "string", nullable: true },
+                resolutionNote: { type: "string", example: "Verified as separate point." },
+              },
+            },
             createdAt: { type: "string", format: "date-time" },
             updatedAt: { type: "string", format: "date-time" },
           },
@@ -185,6 +201,86 @@ const options = {
             lga: { type: "string" },
             description: { type: "string" },
             photoUrls: { type: "array", items: { type: "string" }, maxItems: 5 },
+          },
+        },
+        ResolveDuplicateReviewRequest: {
+          type: "object",
+          required: ["action"],
+          properties: {
+            action: { type: "string", enum: ["keep", "merge"], example: "keep" },
+            mergeIntoWaterpointId: { type: "string", nullable: true },
+            resolutionNote: { type: "string", maxLength: 500, example: "Verified as separate point." },
+          },
+        },
+        DuplicateReviewQueueResponse: {
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Waterpoint" },
+            },
+            page: { type: "integer" },
+            limit: { type: "integer" },
+            total: { type: "integer" },
+            totalPages: { type: "integer" },
+          },
+        },
+        DuplicateAuditResponse: {
+          type: "object",
+          properties: {
+            policy: {
+              type: "object",
+              properties: {
+                minDistanceMeters: { type: "number" },
+                reviewDistanceMeters: { type: "number" },
+                auditDistanceMeters: { type: "number" },
+                includeResolved: { type: "boolean" },
+              },
+            },
+            scanned: {
+              type: "object",
+              properties: {
+                considered: { type: "integer" },
+                maxItems: { type: "integer" },
+                truncated: { type: "boolean" },
+              },
+            },
+            summary: {
+              type: "object",
+              properties: {
+                exactDuplicateGroups: { type: "integer" },
+                exactDuplicateRecords: { type: "integer" },
+                proximityCandidates: { type: "integer" },
+                hardDuplicates: { type: "integer" },
+                mergeCandidates: { type: "integer" },
+                reviewCandidates: { type: "integer" },
+              },
+            },
+            exactDuplicateGroups: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  duplicateKey: { type: "string" },
+                  count: { type: "integer" },
+                  waterpointIds: { type: "array", items: { type: "string" } },
+                },
+              },
+            },
+            proximityCandidates: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  distanceMeters: { type: "number" },
+                  nameSimilarityScore: { type: "number" },
+                  recommendation: {
+                    type: "string",
+                    enum: ["hard_duplicate", "merge_candidate", "review_candidate"],
+                  },
+                },
+              },
+            },
           },
         },
         FaultReport: {
@@ -334,6 +430,28 @@ const options = {
                   status: { type: "string" },
                   community: { type: "string" },
                 },
+              },
+            },
+          },
+        },
+        DuplicateReviewInsightsResponse: {
+          type: "object",
+          properties: {
+            windowDays: { type: "integer", example: 30 },
+            stats: {
+              type: "object",
+              properties: {
+                pendingReview: { type: "integer", example: 8 },
+                resolvedKeep: { type: "integer", example: 15 },
+                resolvedMerged: { type: "integer", example: 4 },
+                clear: { type: "integer", example: 120 },
+                totalReviewedInWindow: { type: "integer", example: 6 },
+                reviewedKeepInWindow: { type: "integer", example: 4 },
+                reviewedMergedInWindow: { type: "integer", example: 2 },
+                avgReviewedKeepDistanceMeters: { type: "number", example: 21.3 },
+                avgReviewedMergedDistanceMeters: { type: "number", example: 12.7 },
+                pendingOldestAgeDays: { type: "integer", example: 11 },
+                pendingCount: { type: "integer", example: 8 },
               },
             },
           },

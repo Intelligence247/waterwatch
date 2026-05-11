@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  Droplets,
   LayoutDashboard,
   Map,
   AlertTriangle,
@@ -13,6 +12,7 @@ import {
   ChevronRight,
   MapPin,
 } from 'lucide-react';
+import { WaterWatchLogo } from '../brand/WaterWatchLogo';
 
 const sidebarLinks = [
   { to: '/citizen', icon: LayoutDashboard, label: 'Overview', end: true },
@@ -65,22 +65,19 @@ export default function CitizenLayout() {
         } lg:translate-x-0`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center gap-2.5 px-5 border-b border-slate-100 flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-teal-700 flex items-center justify-center">
-            <Droplets className="w-4 h-4 text-white" />
+        <div className="min-h-16 flex flex-col gap-2 px-4 py-3 border-b border-slate-100 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <WaterWatchLogo className="h-8 w-auto min-w-0 flex-1 max-h-8" />
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <span className="font-heading font-800 text-base tracking-tight text-slate-900">
-            Water<span className="text-teal-700">Watch</span>
-          </span>
-          <span className="ml-auto text-[10px] font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200/60">
+          <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200/60 w-fit">
             CITIZEN
           </span>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Navigation */}

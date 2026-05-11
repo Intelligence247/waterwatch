@@ -309,7 +309,74 @@
  *             $ref: '#/components/schemas/CreateWaterpointRequest'
  *     responses:
  *       201:
- *         description: Waterpoint created
+ *         description: Waterpoint created (may include duplicateReviewWarning when within review zone)
+ *       409:
+ *         description: Waterpoint blocked as too close (within hard minimum-distance policy)
+ */
+
+/**
+ * @swagger
+ * /api/waterpoints/dedupe-audit:
+ *   get:
+ *     summary: Run dedupe audit scan and suggest merge/review candidates (admin only)
+ *     tags: [Waterpoints]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: distanceMeters
+ *         schema: { type: integer, minimum: 1, maximum: 2000 }
+ *         description: Override audit distance threshold (meters)
+ *       - in: query
+ *         name: maxItems
+ *         schema: { type: integer, minimum: 10, maximum: 2000, default: 400 }
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [borehole, well, tap] }
+ *       - in: query
+ *         name: community
+ *         schema: { type: string }
+ *       - in: query
+ *         name: includeResolved
+ *         schema: { type: boolean, default: false }
+ *         description: Include previously resolved records in audit scan
+ *     responses:
+ *       200:
+ *         description: Dedupe audit report
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DuplicateAuditResponse'
+ */
+
+/**
+ * @swagger
+ * /api/waterpoints/review-queue:
+ *   get:
+ *     summary: List duplicate-review queue (admin only)
+ *     tags: [Waterpoints]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [pending_review, resolved_keep, resolved_merged, clear, all], default: pending_review }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, minimum: 1, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc], default: desc }
+ *     responses:
+ *       200:
+ *         description: Paged duplicate-review queue
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DuplicateReviewQueueResponse'
  */
 
 /**
@@ -344,7 +411,9 @@
  *             $ref: '#/components/schemas/UpdateWaterpointRequest'
  *     responses:
  *       200:
- *         description: Waterpoint updated
+ *         description: Waterpoint updated (may include duplicateReviewWarning when within review zone)
+ *       409:
+ *         description: Waterpoint blocked as too close (within hard minimum-distance policy)
  *   delete:
  *     summary: Delete waterpoint (admin only)
  *     tags: [Waterpoints]
@@ -358,6 +427,34 @@
  *     responses:
  *       200:
  *         description: Waterpoint deleted
+ */
+
+/**
+ * @swagger
+ * /api/waterpoints/{id}/review:
+ *   patch:
+ *     summary: Resolve duplicate-review status for a waterpoint (admin only)
+ *     tags: [Waterpoints]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ResolveDuplicateReviewRequest'
+ *     responses:
+ *       200:
+ *         description: Duplicate review resolved
+ *       400:
+ *         description: Invalid resolution input or waterpoint not pending review
+ *       404:
+ *         description: Waterpoint or merge target not found
  */
 
 /**
@@ -489,6 +586,28 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/CitizenOverviewResponse'
+ */
+
+/**
+ * @swagger
+ * /api/analytics/duplicate-review-insights:
+ *   get:
+ *     summary: Duplicate review quality metrics for admin dashboard
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema: { type: integer, minimum: 1, maximum: 365, default: 30 }
+ *         description: Rolling window (days) for reviewed metrics
+ *     responses:
+ *       200:
+ *         description: Duplicate review KPI metrics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DuplicateReviewInsightsResponse'
  */
 
 /**
