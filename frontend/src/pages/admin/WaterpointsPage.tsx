@@ -801,9 +801,8 @@ import { useToast } from '../../components/ui/ToastProvider';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
   captureBestPosition,
-  fetchApproximateLocationByNetwork,
   geolocationFailureMessage,
-  LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS,
+  LOCATION_WARNING_THRESHOLD_METERS,
   normalizeCapturedPosition,
   type LocationPhase,
 } from '../../lib/geolocation';
@@ -848,7 +847,6 @@ const phaseLabel: Record<LocationPhase, string> = {
   wifi: 'Trying Wi-Fi location…',
   gps: 'Waiting for GPS fix…',
   cache: 'Using recent location…',
-  network: 'Using network location…',
 };
 
 interface FormData {
@@ -895,8 +893,8 @@ export default function WaterpointsPage() {
   // Location state
   const [locating, setLocating] = useState(false);
   const [locationPhase, setLocationPhase] = useState<LocationPhase | null>(null);
-  const [networkLocating, setNetworkLocating] = useState(false);
   const [capturedAccuracyMeters, setCapturedAccuracyMeters] = useState<number | null>(null);
+  const [showAccuracyWarning, setShowAccuracyWarning] = useState(false);
 
   // Map picker
   const [mapPickerOpen, setMapPickerOpen] = useState(false);
@@ -981,8 +979,9 @@ export default function WaterpointsPage() {
     setCapturedAccuracyMeters(n.capturedAccuracyMeters);
     if (n.isApproximateNetwork) {
       toast('warning', 'Approximate network location applied (city-level). Use "Pick on map" for an exact water point.');
-    } else if (n.capturedAccuracyMeters === null) {
-      toast('warning', 'Location applied with moderate precision. Use "Pick on map" if you need an exact pin.');
+    } else if (n.capturedAccuracyMeters === null || n.capturedAccuracyMeters > LOCATION_WARNING_THRESHOLD_METERS) {
+      const accText = n.capturedAccuracyMeters ? ` (±${Math.round(n.capturedAccuracyMeters)} m)` : '';
+      toast('warning', `Location applied with moderate precision${accText}. Use "Pick on map" if you need an exact pin.`);
     } else {
       toast('success', `Location captured with ±${Math.round(n.capturedAccuracyMeters)} m accuracy.`);
     }
@@ -1009,19 +1008,7 @@ export default function WaterpointsPage() {
     }
   };
 
-  const handleNetworkLocation = async () => {
-    setNetworkLocating(true);
-    try {
-      const guess = await fetchApproximateLocationByNetwork();
-      if (!guess) {
-        toast('error', 'Could not resolve network location. Try "Pick on map".');
-        return;
-      }
-      applyNormalizedCoords(normalizeCapturedPosition(guess));
-    } finally {
-      setNetworkLocating(false);
-    }
-  };
+
 
   const openMapPicker = () => {
     const lat = parseFloat(form.latitude);
@@ -1051,7 +1038,8 @@ export default function WaterpointsPage() {
     toast('success', 'Coordinates set from map.');
   };
 
-  const handleSave = async () => {
+  const handleSave = async (bypassAccuracyCheck: boolean | React.MouseEvent = false) => {
+    const shouldBypass = typeof bypassAccuracyCheck === 'boolean' ? bypassAccuracyCheck : false;
     const lat = parseFloat(form.latitude);
     const lng = parseFloat(form.longitude);
     if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
@@ -1062,8 +1050,8 @@ export default function WaterpointsPage() {
       toast('error', 'Name, community, and LGA are required.');
       return;
     }
-    if (capturedAccuracyMeters !== null && capturedAccuracyMeters > LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS) {
-      toast('error', 'Captured location is too inaccurate. Recapture before saving.');
+    if (!shouldBypass && capturedAccuracyMeters !== null && capturedAccuracyMeters > LOCATION_WARNING_THRESHOLD_METERS) {
+      setShowAccuracyWarning(true);
       return;
     }
 
@@ -1274,6 +1262,20 @@ export default function WaterpointsPage() {
         loading={deleting}
       />
 
+      {/* Accuracy Warning Confirmation */}
+      <ConfirmDialog
+        open={showAccuracyWarning}
+        title="Moderate Location Accuracy"
+        message={`The captured location accuracy is ±${Math.round(capturedAccuracyMeters || 0)} m, which exceeds our preferred precision threshold of ${LOCATION_WARNING_THRESHOLD_METERS} m. Are you sure you want to save these coordinates?`}
+        confirmLabel="Save Anyway"
+        confirmVariant="primary"
+        onConfirm={() => {
+          setShowAccuracyWarning(false);
+          void handleSave(true);
+        }}
+        onCancel={() => setShowAccuracyWarning(false)}
+      />
+
       {/* Create/Edit Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1346,7 +1348,7 @@ export default function WaterpointsPage() {
                 <button
                   type="button"
                   onClick={handleGetMyLocation}
-                  disabled={locating || networkLocating}
+                  disabled={locating}
                   className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-teal-200 bg-teal-50 text-teal-700 text-sm font-semibold hover:bg-teal-100 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {locating ? (
@@ -1376,15 +1378,6 @@ export default function WaterpointsPage() {
                   className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50"
                 >
                   <MapPin className="w-4 h-4" /> Pick on map
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleNetworkLocation()}
-                  disabled={locating || networkLocating}
-                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-sm font-semibold hover:bg-slate-50 disabled:opacity-60"
-                >
-                  {networkLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
-                  Network (approx.)
                 </button>
               </div>
 

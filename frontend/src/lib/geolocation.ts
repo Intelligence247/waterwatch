@@ -365,8 +365,11 @@
 /** Target precision — settle early when GPS reaches this. */
 export const LOCATION_TARGET_ACCURACY_METERS = 20;
 
-/** Maximum accuracy we'll silently record without a warning. */
-export const LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS = 50;
+/** Accuracy warning threshold. If accuracy exceeds this, we warn the user. */
+export const LOCATION_WARNING_THRESHOLD_METERS = 50;
+
+/** Maximum accuracy we'll record as valid before fallback/nulling. */
+export const LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS = 150;
 
 /** Minimum GPS watch samples before we accept a "target" reading. */
 export const LOCATION_MIN_SAMPLES = 2;
@@ -410,9 +413,8 @@ export const APPROXIMATE_NETWORK_ACCURACY_METERS = 8_000;
  *   'wifi'    — trying fast Wi-Fi / network positioning
  *   'gps'     — GPS watch running, waiting for a good fix
  *   'cache'   — returning a recently cached location
- *   'network' — falling back to IP geolocation
  */
-export type LocationPhase = 'wifi' | 'gps' | 'cache' | 'network';
+export type LocationPhase = 'wifi' | 'gps' | 'cache';
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -588,6 +590,7 @@ function captureWithProgressiveStrategy(
     let gpsSamples = 0;
     let watchId: ReturnType<typeof navigator.geolocation.watchPosition> | null = null;
     let windowTimer: ReturnType<typeof setTimeout> | null = null;
+    let settleTimer: ReturnType<typeof setTimeout> | null = null;
 
     /** Update bestPosition if `pos` has better (lower) accuracy. */
     const tryUpdate = (pos: GeolocationPosition): void => {
@@ -608,6 +611,10 @@ function captureWithProgressiveStrategy(
       if (windowTimer !== null) {
         clearTimeout(windowTimer);
         windowTimer = null;
+      }
+      if (settleTimer !== null) {
+        clearTimeout(settleTimer);
+        settleTimer = null;
       }
     };
 
@@ -640,8 +647,11 @@ function captureWithProgressiveStrategy(
         if (settled) return;
         tryUpdate(pos);
         const acc = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : Infinity;
-        // If Wi-Fi already hit the target, no need to wait for GPS.
-        if (acc <= LOCATION_TARGET_ACCURACY_METERS) {
+        
+        const isDesktop = !/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        // If Wi-Fi already hit the target, or if desktop hits max acceptable accuracy, settle immediately.
+        if (acc <= LOCATION_TARGET_ACCURACY_METERS || (isDesktop && acc <= LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS)) {
           finish();
         }
         // Otherwise keep the GPS watch running — it may produce a better fix.
@@ -660,6 +670,14 @@ function captureWithProgressiveStrategy(
         tryUpdate(pos);
 
         const acc = Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : Infinity;
+        
+        const isDesktop = !/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        // Desktop quick-settle: if accuracy is acceptable (<= 150m), settle on the first sample.
+        if (isDesktop && acc <= LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS) {
+          finish();
+          return;
+        }
 
         // Excellent fix with enough samples → done.
         if (acc <= LOCATION_TARGET_ACCURACY_METERS && gpsSamples >= LOCATION_MIN_SAMPLES) {
@@ -668,7 +686,7 @@ function captureWithProgressiveStrategy(
         }
 
         // Acceptable fix after a few attempts (handles slow GPS warm-up).
-        if (acc <= LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS && gpsSamples >= 3) {
+        if (acc <= LOCATION_WARNING_THRESHOLD_METERS && gpsSamples >= 3) {
           finish();
           return;
         }
@@ -676,7 +694,14 @@ function captureWithProgressiveStrategy(
         // Desktop / Wi-Fi plateau: accuracy has stopped improving, settle.
         if (gpsSamples >= 5) {
           finish();
+          return;
         }
+
+        // Settle timer: if no new updates arrive within 2.5 seconds, settle with the best so far.
+        if (settleTimer !== null) {
+          clearTimeout(settleTimer);
+        }
+        settleTimer = setTimeout(finish, 2500);
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
@@ -732,7 +757,7 @@ export async function captureBestPosition(
   } catch (err) {
     // Do not fall back when the user explicitly denied permission.
     if (getPositionErrorCode(err) === 1) throw err;
-    // All other errors (unavailable, timeout, etc.) — try cached / network.
+    // All other errors (unavailable, timeout, etc.) — try cached.
   }
 
   // 3. Stale cache — up to 1 hour old.
@@ -741,11 +766,6 @@ export async function captureBestPosition(
     onProgress?.('cache');
     return staleCache;
   }
-
-  // 4. IP geolocation — city-level fallback.
-  onProgress?.('network');
-  const networkPos = await fetchApproximateLocationByNetwork();
-  if (networkPos) return networkPos;
 
   throw new Error('Unable to capture your location. Please pick it on the map instead.');
 }

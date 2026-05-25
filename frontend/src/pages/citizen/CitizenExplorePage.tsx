@@ -951,14 +951,13 @@ export default function CitizenExplorePage() {
     if (!locating) return 'Use My Location';
     if (locationPhase === 'wifi') return 'Wi-Fi fix…';
     if (locationPhase === 'gps') return 'GPS warm-up…';
-    if (locationPhase === 'network') return 'Network location…';
     return 'Locating…';
   };
 
   const locatingIcon = () => {
     if (!locating) return <Locate className="w-4 h-4" />;
     if (locationPhase === 'gps') return <Satellite className="w-4 h-4" />;
-    if (locationPhase === 'wifi' || locationPhase === 'network') return <Wifi className="w-4 h-4" />;
+    if (locationPhase === 'wifi') return <Wifi className="w-4 h-4" />;
     return <Loader2 className="w-4 h-4 animate-spin" />;
   };
 
