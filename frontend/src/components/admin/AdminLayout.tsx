@@ -11,6 +11,7 @@ import {
   ChevronRight,
   UserPlus,
   ShieldAlert,
+  Settings,
 } from 'lucide-react';
 import { WaterWatchLogo } from '../brand/WaterWatchLogo';
 
@@ -20,6 +21,7 @@ const sidebarLinks = [
   { to: '/admin/dedupe', icon: ShieldAlert, label: 'Data Integrity', end: false },
   { to: '/admin/reports', icon: AlertTriangle, label: 'Fault Reports', end: false },
   { to: '/admin/invites', icon: UserPlus, label: 'Admin invites', end: false },
+  { to: '/admin/settings', icon: Settings, label: 'Settings', end: false },
 ];
 
 const breadcrumbMap: Record<string, string> = {
@@ -28,6 +30,7 @@ const breadcrumbMap: Record<string, string> = {
   '/admin/dedupe': 'Data Integrity',
   '/admin/reports': 'Fault Reports',
   '/admin/invites': 'Admin invites',
+  '/admin/settings': 'Settings',
 };
 
 export default function AdminLayout() {
@@ -51,7 +54,7 @@ export default function AdminLayout() {
     }`;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="h-screen overflow-hidden bg-slate-50 flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -62,13 +65,13 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ${
           sidebarOpen ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full'
         } lg:translate-x-0`}
       >
         {/* Logo */}
         <div className="min-h-16 flex items-center gap-2 px-4 py-3 border-b border-slate-100 flex-shrink-0">
-          <WaterWatchLogo className="h-8 w-auto min-w-0 flex-1 max-h-8" />
+          <WaterWatchLogo className="h-12 w-auto min-w-0 flex-1 max-h-12" />
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden flex-shrink-0 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"
@@ -78,7 +81,7 @@ export default function AdminLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto min-h-0">
           {sidebarLinks.map((link) => (
             <NavLink
               key={link.to}
@@ -119,7 +122,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64 h-full overflow-hidden">
         {/* Top header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center gap-4 px-4 sm:px-6 flex-shrink-0">
           <button

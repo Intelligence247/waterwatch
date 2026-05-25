@@ -102,7 +102,6 @@ const waterpointSchema = new mongoose.Schema(
     duplicateKey: {
       type: String,
       default: "",
-      unique: true,
       index: true,
     },
     duplicateReviewStatus: {

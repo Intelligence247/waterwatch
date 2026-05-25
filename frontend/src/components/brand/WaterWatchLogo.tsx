@@ -7,6 +7,7 @@ type WaterWatchLogoProps = ImgHTMLAttributes<HTMLImageElement>;
  */
 export function WaterWatchLogo({ className = '', alt = 'WaterWatch', ...rest }: WaterWatchLogoProps) {
   return (
+    <a href="/">
     <img
       src="/waterwatch-logo.png"
       alt={alt}
@@ -14,5 +15,6 @@ export function WaterWatchLogo({ className = '', alt = 'WaterWatch', ...rest }: 
       decoding="async"
       {...rest}
     />
+    </a>
   );
 }

@@ -16,6 +16,7 @@ type BackendWaterpoint = {
   duplicateReview?: {
     status: 'clear' | 'pending_review' | 'resolved_keep' | 'resolved_merged';
     candidateWaterpointId: string | null;
+    candidateWaterpointName?: string | null;
     distanceMeters: number | null;
     flaggedAt: string | null;
     reviewedAt?: string | null;
@@ -85,6 +86,8 @@ export type ResolveDuplicateReviewPayload = {
   action: 'keep' | 'merge';
   mergeIntoWaterpointId?: string;
   resolutionNote?: string;
+  leftUpdates?: Partial<WaterpointWritePayload>;
+  rightUpdates?: Partial<WaterpointWritePayload>;
 };
 
 export type DuplicateAuditCandidate = {
@@ -92,7 +95,10 @@ export type DuplicateAuditCandidate = {
     id: string;
     name: string;
     type: WaterpointType;
+    status: WaterpointStatus;
     community: string;
+    lga: string;
+    description: string;
     latitude: number;
     longitude: number;
     reviewStatus: string;
@@ -101,7 +107,10 @@ export type DuplicateAuditCandidate = {
     id: string;
     name: string;
     type: WaterpointType;
+    status: WaterpointStatus;
     community: string;
+    lga: string;
+    description: string;
     latitude: number;
     longitude: number;
     reviewStatus: string;
@@ -157,6 +166,7 @@ function mapBackendWaterpoint(item: BackendWaterpoint): Waterpoint {
       ? {
           status: item.duplicateReview.status,
           candidate_waterpoint_id: item.duplicateReview.candidateWaterpointId ?? null,
+          candidate_waterpoint_name: item.duplicateReview.candidateWaterpointName ?? null,
           distance_meters: item.duplicateReview.distanceMeters ?? null,
           flagged_at: item.duplicateReview.flaggedAt ?? null,
           reviewed_at: item.duplicateReview.reviewedAt ?? null,

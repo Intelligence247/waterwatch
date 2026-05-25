@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { WaterWatchLogo } from './brand/WaterWatchLogo';
+import { useAuth } from '../contexts/AuthContext';
 
 const navLinks = [
   { label: 'Features', href: '/#features' },
@@ -13,6 +14,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const { user, userRole } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -74,12 +76,21 @@ export default function Navbar() {
             >
               Explore Map
             </Link>
-            <Link
-              to="/citizen/login"
-              className="text-sm font-medium text-slate-600 hover:text-teal-700 transition-colors px-4 py-2"
-            >
-              Login
-            </Link>
+            {user ? (
+              <Link
+                to={userRole === 'admin' ? '/admin' : '/citizen'}
+                className="text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 rounded-xl px-4 py-2 shadow-sm shadow-teal-500/10 hover:shadow-teal-500/20 transition-all"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                to="/citizen/login"
+                className="text-sm font-medium text-slate-600 hover:text-teal-700 transition-colors px-4 py-2"
+              >
+                Login
+              </Link>
+            )}
           </div>
 
           {/* Mobile Toggle */}
@@ -118,13 +129,23 @@ export default function Navbar() {
               >
                 Explore Map
               </Link>
-              <Link
-                to="/citizen/login"
-                onClick={() => setMobileOpen(false)}
-                className="block px-4 py-3 rounded-xl text-sm font-medium text-cyan-700 hover:bg-cyan-50 transition-colors"
-              >
-                Login
-              </Link>
+              {user ? (
+                <Link
+                  to={userRole === 'admin' ? '/admin' : '/citizen'}
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-4 py-3 rounded-xl text-sm font-semibold text-teal-700 hover:bg-teal-50 transition-colors"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  to="/citizen/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="block px-4 py-3 rounded-xl text-sm font-medium text-cyan-700 hover:bg-cyan-50 transition-colors"
+                >
+                  Login
+                </Link>
+              )}
             </div>
           </div>
         </div>

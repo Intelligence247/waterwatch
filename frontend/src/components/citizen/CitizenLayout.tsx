@@ -49,7 +49,7 @@ export default function CitizenLayout() {
     }`;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="h-screen overflow-hidden bg-slate-50 flex">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -60,7 +60,7 @@ export default function CitizenLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ${
           sidebarOpen ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full'
         } lg:translate-x-0`}
       >
@@ -81,7 +81,7 @@ export default function CitizenLayout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto min-h-0">
           {sidebarLinks.map((link) => (
             <NavLink
               key={link.to}
@@ -122,7 +122,7 @@ export default function CitizenLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 lg:pl-64 h-full overflow-hidden">
         {/* Top header */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center gap-4 px-4 sm:px-6 flex-shrink-0">
           <button

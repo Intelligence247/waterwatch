@@ -18,6 +18,7 @@ const WaterpointsPage = lazy(() => import('./pages/admin/WaterpointsPage'));
 const ReportsPage = lazy(() => import('./pages/admin/ReportsPage'));
 const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage'));
 const AdminDedupePage = lazy(() => import('./pages/admin/AdminDedupePage'));
+const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'));
 const CitizenOverview = lazy(() => import('./pages/citizen/CitizenOverview'));
 const CitizenExplorePage = lazy(() => import('./pages/citizen/CitizenExplorePage'));
 const CitizenReportsPage = lazy(() => import('./pages/citizen/CitizenReportsPage'));
@@ -75,6 +76,7 @@ function AppRoutes() {
           <Route path="dedupe" element={<AdminDedupePage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="invites" element={<AdminInvitesPage />} />
+          <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
 
         {/* Citizen Dashboard */}

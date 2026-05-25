@@ -1,4 +1,4 @@
-import { clearAuthTokens, getAccessToken } from "./authTokens";
+import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from "./authTokens";
 import { env } from "./env";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -21,6 +21,7 @@ type ApiRequestOptions = {
   headers?: Record<string, string>;
   auth?: boolean;
   signal?: AbortSignal;
+  _retry?: boolean;
 };
 
 let unauthorizedHandler: (() => void) | null = null;
@@ -55,7 +56,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     }
   }
 
-  const res = await fetch(`${env.apiBaseUrl}${normalizedPath}`, {
+  let res = await fetch(`${env.apiBaseUrl}${normalizedPath}`, {
     method,
     headers: requestHeaders,
     credentials: "include",
@@ -63,9 +64,47 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     signal,
   });
 
-  const data = await parseResponseBody(res);
+  let data = await parseResponseBody(res);
 
   if (!res.ok) {
+    if (res.status === 401 && auth && !options._retry) {
+      options._retry = true;
+      const refreshToken = getRefreshToken();
+      if (refreshToken) {
+        try {
+          const refreshRes = await fetch(`${env.apiBaseUrl}/api/auth/refresh`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refreshToken }),
+          });
+
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json() as { accessToken: string; refreshToken?: string };
+            setAuthTokens({
+              accessToken: refreshData.accessToken,
+              ...(refreshData.refreshToken ? { refreshToken: refreshData.refreshToken } : {}),
+            });
+
+            // Re-apply the new access token
+            requestHeaders.Authorization = `Bearer ${refreshData.accessToken}`;
+
+            res = await fetch(`${env.apiBaseUrl}${normalizedPath}`, {
+              method,
+              headers: requestHeaders,
+              credentials: "include",
+              body: body !== undefined ? JSON.stringify(body) : undefined,
+              signal,
+            });
+            data = await parseResponseBody(res);
+          }
+        } catch (refreshErr) {
+          console.error("Silent token refresh failed:", refreshErr);
+        }
+      }
+    }
+
     if (res.status === 401) {
       clearAuthTokens();
       unauthorizedHandler?.();

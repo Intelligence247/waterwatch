@@ -16,6 +16,7 @@ export interface Waterpoint {
   duplicate_review?: {
     status: 'clear' | 'pending_review' | 'resolved_keep' | 'resolved_merged';
     candidate_waterpoint_id: string | null;
+    candidate_waterpoint_name?: string | null;
     distance_meters: number | null;
     flagged_at: string | null;
     reviewed_at: string | null;

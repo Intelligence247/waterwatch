@@ -90,6 +90,8 @@ export const listDuplicateAuditSchema = z.object({
   }),
 });
 
+const updateWaterpointFields = createBody.partial();
+
 export const resolveDuplicateReviewSchema = z
   .object({
     body: z
@@ -97,6 +99,8 @@ export const resolveDuplicateReviewSchema = z
         action: z.enum(["keep", "merge"]),
         mergeIntoWaterpointId: z.string().regex(objectIdLike, "Invalid mergeIntoWaterpointId").optional(),
         resolutionNote: z.string().trim().max(500).optional().default(""),
+        leftUpdates: updateWaterpointFields.optional(),
+        rightUpdates: updateWaterpointFields.optional(),
       })
       .refine(
         (body) => (body.action === "merge" ? Boolean(body.mergeIntoWaterpointId) : true),
@@ -107,3 +111,4 @@ export const resolveDuplicateReviewSchema = z
       id: z.string().regex(objectIdLike, "Invalid waterpoint id"),
     }),
   });
+

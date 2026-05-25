@@ -803,7 +803,6 @@ import {
   captureBestPosition,
   fetchApproximateLocationByNetwork,
   geolocationFailureMessage,
-  getPositionErrorCode,
   LOCATION_MAX_ACCEPTABLE_ACCURACY_METERS,
   normalizeCapturedPosition,
   type LocationPhase,

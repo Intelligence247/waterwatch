@@ -697,7 +697,6 @@ import { createFaultReport } from '../../lib/faultReportsApi';
 import {
   captureBestPosition,
   geolocationFailureMessage,
-  getPositionErrorCode,
   normalizeCapturedPosition,
   type LocationPhase,
 } from '../../lib/geolocation';

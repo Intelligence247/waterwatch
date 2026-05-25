@@ -2,6 +2,7 @@ import { HttpError } from "../middleware/errorHandler.js";
 import mongoose from "mongoose";
 import { loadEnv } from "../config/env.js";
 import { normalizeText, Waterpoint } from "../models/waterpoint.model.js";
+import { getSystemSettings } from "../config/settings.js";
 
 function escapeRegex(input) {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -9,9 +10,14 @@ function escapeRegex(input) {
 
 function toPublicWaterpoint(doc) {
   const photoUrls = Array.isArray(doc.photoUrls) ? doc.photoUrls : [];
+  const candidate = doc.duplicateReviewCandidateId;
+  const hasCandidate = !!candidate;
+  const isPopulated = hasCandidate && typeof candidate === "object" && candidate.name !== undefined;
+
   const duplicateReview = {
     status: doc.duplicateReviewStatus ?? "clear",
-    candidateWaterpointId: doc.duplicateReviewCandidateId ? String(doc.duplicateReviewCandidateId) : null,
+    candidateWaterpointId: hasCandidate ? String(isPopulated ? candidate._id : candidate) : null,
+    candidateWaterpointName: isPopulated ? candidate.name : null,
     distanceMeters:
       typeof doc.duplicateReviewDistanceMeters === "number" ? doc.duplicateReviewDistanceMeters : null,
     flaggedAt: doc.duplicateReviewFlaggedAt ?? null,
@@ -38,6 +44,10 @@ function toPublicWaterpoint(doc) {
 }
 
 function toReviewQueueItem(doc) {
+  const candidate = doc.duplicateReviewCandidateId;
+  const hasCandidate = !!candidate;
+  const isPopulated = hasCandidate && typeof candidate === "object" && candidate.name !== undefined;
+
   return {
     id: String(doc._id),
     name: doc.name,
@@ -48,7 +58,8 @@ function toReviewQueueItem(doc) {
     longitude: doc.longitude,
     duplicateReview: {
       status: doc.duplicateReviewStatus ?? "clear",
-      candidateWaterpointId: doc.duplicateReviewCandidateId ? String(doc.duplicateReviewCandidateId) : null,
+      candidateWaterpointId: hasCandidate ? String(isPopulated ? candidate._id : candidate) : null,
+      candidateWaterpointName: isPopulated ? candidate.name : null,
       distanceMeters:
         typeof doc.duplicateReviewDistanceMeters === "number" ? doc.duplicateReviewDistanceMeters : null,
       flaggedAt: doc.duplicateReviewFlaggedAt ?? null,
@@ -105,21 +116,20 @@ function dedupeRecommendation({ distanceMeters, minDistanceMeters, reviewDistanc
 }
 
 async function evaluateNearbyPolicy({ latitude, longitude, type, community, excludeId }) {
-  const env = loadEnv();
-  const minDistanceMeters = env.WATERPOINT_MIN_DISTANCE_METERS;
-  const reviewDistanceMeters = Math.max(minDistanceMeters, env.WATERPOINT_REVIEW_DISTANCE_METERS);
+  const settings = await getSystemSettings();
+  const minDistanceMeters = settings.waterpointMinDistanceMeters;
+  const reviewDistanceMeters = Math.max(minDistanceMeters, settings.waterpointReviewDistanceMeters);
   const normalizedCommunity = normalizeText(community);
 
   const query = {
     type,
-    normalizedCommunity,
   };
 
   if (excludeId) {
     query._id = { $ne: new mongoose.Types.ObjectId(excludeId) };
   }
 
-  const [nearby] = await Waterpoint.aggregate([
+  const nearbyList = await Waterpoint.aggregate([
     {
       $geoNear: {
         near: { type: "Point", coordinates: [longitude, latitude] },
@@ -134,47 +144,36 @@ async function evaluateNearbyPolicy({ latitude, longitude, type, community, excl
         _id: 1,
         name: 1,
         community: 1,
+        normalizedCommunity: 1,
         type: 1,
         latitude: 1,
         longitude: 1,
         distanceMeters: 1,
       },
     },
-    { $limit: 1 },
+    { $limit: 10 },
   ]);
 
-  if (!nearby) {
-    return { status: "clear" };
+  let matchedNearby = null;
+  for (const item of nearbyList) {
+    if (item.distanceMeters <= minDistanceMeters) {
+      matchedNearby = item;
+      break;
+    }
+    if (item.distanceMeters <= reviewDistanceMeters && item.normalizedCommunity === normalizedCommunity) {
+      matchedNearby = item;
+      break;
+    }
   }
 
-  if (nearby.distanceMeters <= minDistanceMeters) {
-    throw new HttpError(
-      409,
-      `A similar waterpoint already exists within ${minDistanceMeters}m in this community`,
-      {
-        policy: {
-          minDistanceMeters,
-          reviewDistanceMeters,
-          typeScope: type,
-          communityScope: community,
-        },
-        conflict: {
-          id: String(nearby._id),
-          name: nearby.name,
-          community: nearby.community,
-          type: nearby.type,
-          latitude: nearby.latitude,
-          longitude: nearby.longitude,
-          distanceMeters: nearby.distanceMeters,
-        },
-      },
-    );
+  if (!matchedNearby) {
+    return { status: "clear" };
   }
 
   return {
     status: "pending_review",
-    candidateWaterpointId: nearby._id,
-    distanceMeters: nearby.distanceMeters,
+    candidateWaterpointId: matchedNearby._id,
+    distanceMeters: matchedNearby.distanceMeters,
     flaggedAt: new Date(),
     policy: {
       minDistanceMeters,
@@ -183,13 +182,13 @@ async function evaluateNearbyPolicy({ latitude, longitude, type, community, excl
       communityScope: community,
     },
     conflict: {
-      id: String(nearby._id),
-      name: nearby.name,
-      community: nearby.community,
-      type: nearby.type,
-      latitude: nearby.latitude,
-      longitude: nearby.longitude,
-      distanceMeters: nearby.distanceMeters,
+      id: String(matchedNearby._id),
+      name: matchedNearby.name,
+      community: matchedNearby.community,
+      type: matchedNearby.type,
+      latitude: matchedNearby.latitude,
+      longitude: matchedNearby.longitude,
+      distanceMeters: matchedNearby.distanceMeters,
     },
   };
 }
@@ -272,7 +271,9 @@ export async function listWaterpoints(req, res) {
 
 export async function getWaterpointById(req, res) {
   const { id } = req.validated.params;
-  const waterpoint = await Waterpoint.findById(id).lean();
+  const waterpoint = await Waterpoint.findById(id)
+    .populate("duplicateReviewCandidateId", "name")
+    .lean();
   if (!waterpoint) throw new HttpError(404, "Waterpoint not found");
   res.json({ waterpoint: toPublicWaterpoint(waterpoint) });
 }
@@ -350,7 +351,12 @@ export async function listDuplicateReviewQueue(req, res) {
   };
 
   const [items, total] = await Promise.all([
-    Waterpoint.find(filter).sort(sort).skip(skip).limit(limit).lean(),
+    Waterpoint.find(filter)
+      .populate("duplicateReviewCandidateId", "name")
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     Waterpoint.countDocuments(filter),
   ]);
 
@@ -365,7 +371,7 @@ export async function listDuplicateReviewQueue(req, res) {
 
 export async function resolveDuplicateReview(req, res) {
   const { id } = req.validated.params;
-  const { action, resolutionNote, mergeIntoWaterpointId } = req.validated.body;
+  const { action, resolutionNote, mergeIntoWaterpointId, leftUpdates, rightUpdates } = req.validated.body;
 
   const waterpoint = await Waterpoint.findById(id);
   if (!waterpoint) throw new HttpError(404, "Waterpoint not found");
@@ -375,8 +381,14 @@ export async function resolveDuplicateReview(req, res) {
   }
 
   let mergeTargetId = null;
+  let target = null;
+  const rightWaterpointId = mergeIntoWaterpointId || waterpoint.duplicateReviewCandidateId;
+
   if (action === "merge") {
-    const target = await Waterpoint.findById(mergeIntoWaterpointId).lean();
+    if (!rightWaterpointId) {
+      throw new HttpError(400, "Merge target waterpoint ID is required");
+    }
+    target = await Waterpoint.findById(rightWaterpointId);
     if (!target) {
       throw new HttpError(404, "Merge target waterpoint not found");
     }
@@ -384,29 +396,83 @@ export async function resolveDuplicateReview(req, res) {
       throw new HttpError(400, "Merge target cannot be the same waterpoint");
     }
     mergeTargetId = target._id;
+  } else if (rightWaterpointId) {
+    target = await Waterpoint.findById(rightWaterpointId);
   }
 
-  waterpoint.duplicateReviewStatus = action === "keep" ? "resolved_keep" : "resolved_merged";
-  waterpoint.duplicateReviewCandidateId = mergeTargetId;
-  waterpoint.duplicateReviewReviewedAt = new Date();
-  waterpoint.duplicateReviewReviewedBy = req.authUser.id;
-  waterpoint.duplicateReviewResolutionNote = resolutionNote ?? "";
-  waterpoint.updatedBy = req.authUser.id;
+  // Apply left updates
+  if (leftUpdates && Object.keys(leftUpdates).length > 0) {
+    const payload = { ...leftUpdates };
+    if ((!payload.photoUrls || payload.photoUrls.length === 0) && payload.photoUrl) {
+      payload.photoUrls = [payload.photoUrl];
+    }
+    delete payload.photoUrl;
+    Object.assign(waterpoint, payload, { updatedBy: req.authUser.id });
+  }
 
-  await waterpoint.save();
+  // Apply right updates
+  if (target && rightUpdates && Object.keys(rightUpdates).length > 0) {
+    const payload = { ...rightUpdates };
+    if ((!payload.photoUrls || payload.photoUrls.length === 0) && payload.photoUrl) {
+      payload.photoUrls = [payload.photoUrl];
+    }
+    delete payload.photoUrl;
+    Object.assign(target, payload, { updatedBy: req.authUser.id });
+    await target.save();
+  }
 
-  res.json({
-    message: "Duplicate review resolved successfully",
-    waterpoint: toPublicWaterpoint(waterpoint),
-  });
+  if (action === "merge") {
+    await Waterpoint.findByIdAndDelete(id);
+
+    // Clear duplicate flags on other waterpoints pointing to this deleted duplicate candidate
+    await Waterpoint.updateMany(
+      { duplicateReviewCandidateId: new mongoose.Types.ObjectId(id) },
+      {
+        $set: {
+          duplicateReviewStatus: "clear",
+          duplicateReviewCandidateId: null,
+          duplicateReviewDistanceMeters: null,
+          duplicateReviewFlaggedAt: null,
+        },
+      }
+    );
+
+    // Return the representation of the merged duplicate
+    const resolvedData = waterpoint.toObject ? waterpoint.toObject() : { ...waterpoint };
+    resolvedData.duplicateReviewStatus = "resolved_merged";
+    resolvedData.duplicateReviewCandidateId = rightWaterpointId || null;
+    resolvedData.duplicateReviewReviewedAt = new Date();
+    resolvedData.duplicateReviewReviewedBy = req.authUser.id;
+    resolvedData.duplicateReviewResolutionNote = resolutionNote ?? "";
+
+    res.json({
+      message: "Duplicate review resolved successfully",
+      waterpoint: toPublicWaterpoint(resolvedData),
+    });
+  } else {
+    waterpoint.duplicateReviewStatus = "resolved_keep";
+    waterpoint.duplicateReviewCandidateId = rightWaterpointId || null;
+    waterpoint.duplicateReviewReviewedAt = new Date();
+    waterpoint.duplicateReviewReviewedBy = req.authUser.id;
+    waterpoint.duplicateReviewResolutionNote = resolutionNote ?? "";
+    waterpoint.updatedBy = req.authUser.id;
+
+    await waterpoint.save();
+
+    res.json({
+      message: "Duplicate review resolved successfully",
+      waterpoint: toPublicWaterpoint(waterpoint),
+    });
+  }
 }
 
+
 export async function getWaterpointDedupeAudit(req, res) {
-  const env = loadEnv();
+  const settings = await getSystemSettings();
   const { distanceMeters, maxItems, type, community, includeResolved } = req.validated.query;
-  const minDistanceMeters = env.WATERPOINT_MIN_DISTANCE_METERS;
-  const reviewDistanceMeters = env.WATERPOINT_REVIEW_DISTANCE_METERS;
-  const thresholdMeters = distanceMeters ?? env.WATERPOINT_AUDIT_DISTANCE_METERS;
+  const minDistanceMeters = settings.waterpointMinDistanceMeters;
+  const reviewDistanceMeters = settings.waterpointReviewDistanceMeters;
+  const thresholdMeters = distanceMeters ?? settings.waterpointAuditDistanceMeters;
 
   const filter = {};
   if (type) filter.type = type;
@@ -421,8 +487,11 @@ export async function getWaterpointDedupeAudit(req, res) {
       _id: 1,
       name: 1,
       type: 1,
+      status: 1,
       community: 1,
       normalizedCommunity: 1,
+      lga: 1,
+      description: 1,
       latitude: 1,
       longitude: 1,
       duplicateKey: 1,
@@ -465,10 +534,15 @@ export async function getWaterpointDedupeAudit(req, res) {
       const right = waterpoints[j];
 
       if (left.type !== right.type) continue;
-      if (left.normalizedCommunity !== right.normalizedCommunity) continue;
 
       const distance = calculateDistanceMeters(left, right);
       if (distance > thresholdMeters) continue;
+
+      // Relax community check if they are very close (<= minDistanceMeters)
+      const isVeryClose = distance <= minDistanceMeters;
+      const isSameCommunity = left.normalizedCommunity === right.normalizedCommunity;
+
+      if (!isVeryClose && !isSameCommunity) continue;
 
       const score = Number(nameSimilarityScore(left.name, right.name).toFixed(2));
       const recommendation = dedupeRecommendation({
@@ -486,7 +560,10 @@ export async function getWaterpointDedupeAudit(req, res) {
           id: String(left._id),
           name: left.name,
           type: left.type,
+          status: left.status,
           community: left.community,
+          lga: left.lga,
+          description: left.description || "",
           latitude: left.latitude,
           longitude: left.longitude,
           reviewStatus: left.duplicateReviewStatus,
@@ -495,7 +572,10 @@ export async function getWaterpointDedupeAudit(req, res) {
           id: String(right._id),
           name: right.name,
           type: right.type,
+          status: right.status,
           community: right.community,
+          lga: right.lga,
+          description: right.description || "",
           latitude: right.latitude,
           longitude: right.longitude,
           reviewStatus: right.duplicateReviewStatus,
