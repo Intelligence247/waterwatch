@@ -33,6 +33,8 @@ function toPublicUser(user) {
     phone: user.phone,
     community: user.community,
     emailVerified: user.emailVerified,
+    status: user.status ?? "active",
+    statusReason: user.statusReason ?? null,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
   };
@@ -167,6 +169,13 @@ export async function login(req, res) {
   const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
   if (!isPasswordValid) throw new HttpError(401, "Invalid email or password");
 
+  if (user.status === "blocked") {
+    throw new HttpError(403, "Your account has been blocked. Please contact support.");
+  }
+  if (user.status === "suspended") {
+    throw new HttpError(403, `Your account is temporarily suspended${user.statusReason ? `: ${user.statusReason}` : "."}`);
+  }
+
   if (!user.emailVerified) {
     throw new HttpError(403, "Please verify your email before login");
   }
@@ -199,6 +208,12 @@ export async function refreshToken(req, res) {
   const user = await User.findById(payload.sub);
   if (!user || !user.refreshTokenHash) {
     throw new HttpError(401, "Invalid refresh session");
+  }
+
+  if (user.status === "blocked" || user.status === "suspended") {
+    user.refreshTokenHash = null;
+    await user.save();
+    throw new HttpError(403, "Your account has been blocked or suspended.");
   }
 
   const incomingHash = hashToken(incomingRefreshToken);

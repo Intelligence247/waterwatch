@@ -22,7 +22,7 @@ export const uploadRouter = Router();
 uploadRouter.post(
   "/image",
   requireAuth,
-  requireRole("admin"),
+  requireRole("admin", "citizen"),
   upload.fields([
     { name: "image", maxCount: 1 },
     { name: "images", maxCount: 5 },

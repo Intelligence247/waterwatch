@@ -12,11 +12,13 @@ import {
   UserPlus,
   ShieldAlert,
   Settings,
+  Users,
 } from 'lucide-react';
 import { WaterWatchLogo } from '../brand/WaterWatchLogo';
 
 const sidebarLinks = [
   { to: '/admin', icon: LayoutDashboard, label: 'Overview', end: true },
+  { to: '/admin/users', icon: Users, label: 'Users', end: false },
   { to: '/admin/waterpoints', icon: MapPin, label: 'Water Points', end: false },
   { to: '/admin/dedupe', icon: ShieldAlert, label: 'Data Integrity', end: false },
   { to: '/admin/reports', icon: AlertTriangle, label: 'Fault Reports', end: false },
@@ -26,6 +28,7 @@ const sidebarLinks = [
 
 const breadcrumbMap: Record<string, string> = {
   '/admin': 'Overview',
+  '/admin/users': 'User Management',
   '/admin/waterpoints': 'Water Points',
   '/admin/dedupe': 'Data Integrity',
   '/admin/reports': 'Fault Reports',

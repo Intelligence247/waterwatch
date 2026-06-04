@@ -26,6 +26,16 @@ const userSchema = new mongoose.Schema(
       default: "citizen",
       index: true,
     },
+    status: {
+      type: String,
+      enum: ["active", "suspended", "blocked"],
+      default: "active",
+      index: true,
+    },
+    statusReason: {
+      type: String,
+      default: null,
+    },
     phone: {
       type: String,
       trim: true,

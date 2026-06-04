@@ -694,6 +694,7 @@ import type { Waterpoint, WaterpointStatus, WaterpointType } from '../../lib/typ
 import { ApiError } from '../../lib/apiClient';
 import { createWaterpoint, listWaterpoints } from '../../lib/waterpointsApi';
 import { createFaultReport } from '../../lib/faultReportsApi';
+import { uploadImages } from '../../lib/uploadsApi';
 import {
   captureBestPosition,
   geolocationFailureMessage,
@@ -708,12 +709,15 @@ import {
   AlertTriangle,
   CheckCircle2,
   Wrench,
-  ChevronDown,
   Plus,
   Send,
   Locate,
   Wifi,
   Satellite,
+  MapPin,
+  Clock,
+  Camera,
+  Trash2,
 } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -804,7 +808,8 @@ export default function CitizenExplorePage() {
   const [mapMode, setMapMode] = useState<MapMode>('view');
   const [clickedLatLng, setClickedLatLng] = useState<{ lat: number; lng: number } | null>(null);
 
-  const [reportForm, setReportForm] = useState({ description: '', waterpointId: '' });
+  const [reportForm, setReportForm] = useState({ description: '', waterpointId: '', photoUrl: '' });
+  const [uploadingReportImage, setUploadingReportImage] = useState(false);
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
 
@@ -853,7 +858,7 @@ export default function CitizenExplorePage() {
     setMapMode('view');
     setClickedLatLng(null);
     setCapturedAccuracyMeters(null);
-    setReportForm({ description: '', waterpointId: '' });
+    setReportForm({ description: '', waterpointId: '', photoUrl: '' });
     setWpForm({ name: '', type: 'borehole', community: '', lga: '', description: '' });
     setReportSuccess(false);
     setWpSuccess(false);
@@ -906,6 +911,7 @@ export default function CitizenExplorePage() {
         latitude: clickedLatLng.lat,
         longitude: clickedLatLng.lng,
         community: profile?.community || 'Unknown',
+        photoUrl: reportForm.photoUrl,
       });
       setReportSuccess(true);
       toast('success', 'Fault report submitted successfully!');
@@ -968,10 +974,10 @@ export default function CitizenExplorePage() {
         <h1 className="font-heading font-800 text-2xl text-slate-900 tracking-tight">Explore Map</h1>
         <p className="text-sm text-slate-500 mt-1">
           {mapMode === 'view'
-            ? 'Click a water point to see details, or use the buttons below to report a fault or add a new point.'
+            ? 'Interactive map of community water sources. Click any point to view details or log a report.'
             : mapMode === 'report'
-            ? 'Click on the map to pin the fault location, then fill in the details.'
-            : 'Click on the map to place the new water point, then fill in the details.'}
+            ? 'Click the map to place a pin marking where the fault occurs, then complete the report details below.'
+            : 'Click on the map to pin the location of the new water source, then fill in details below.'}
         </p>
       </div>
 
@@ -981,20 +987,20 @@ export default function CitizenExplorePage() {
           <>
             <button
               onClick={() => setMapMode('report')}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-semibold shadow-sm hover:shadow-md transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold shadow-sm transition-all"
             >
               <AlertTriangle className="w-4 h-4" /> Report a Fault
             </button>
             <button
               onClick={() => setMapMode('add-point')}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold shadow-sm hover:shadow-md transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold shadow-sm transition-all"
             >
-              <Plus className="w-4 h-4" /> Add Water Point
+              <Plus className="w-4 h-4" /> Register Water Point
             </button>
             <button
               onClick={getMyLocation}
               disabled={locating}
-              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-all disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-all disabled:opacity-60"
             >
               {locatingIcon()}
               {locatingLabel()}
@@ -1003,7 +1009,7 @@ export default function CitizenExplorePage() {
         ) : (
           <button
             onClick={cancelMode}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-all"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-all"
           >
             <X className="w-4 h-4" /> Cancel
           </button>
@@ -1012,11 +1018,11 @@ export default function CitizenExplorePage() {
 
       {/* Mode indicator */}
       {mapMode !== 'view' && (
-        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold ${
-          mapMode === 'report' ? 'bg-amber-50 text-amber-700 border border-amber-200/60' : 'bg-cyan-50 text-cyan-700 border border-cyan-200/60'
+        <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold border ${
+          mapMode === 'report' ? 'bg-amber-50 text-amber-700 border-amber-200/60' : 'bg-teal-50 text-teal-700 border-teal-200/60'
         }`}>
-          {mapMode === 'report' ? <AlertTriangle className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {mapMode === 'report' ? 'Fault Report Mode' : 'Add Water Point Mode'} — Click the map to set location
+          {mapMode === 'report' ? <AlertTriangle className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+          {mapMode === 'report' ? 'FAULT REPORTING MODE' : 'REGISTER WATER POINT MODE'} — Click the map where this item is located.
         </div>
       )}
 
@@ -1036,7 +1042,7 @@ export default function CitizenExplorePage() {
       {/* Map + Sidebar */}
       <div className="flex gap-6 flex-col lg:flex-row">
         {/* Map */}
-        <div className="flex-1 rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ minHeight: '500px' }}>
+        <div className="flex-1 rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative" style={{ minHeight: '500px' }}>
           {loading && (
             <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
               <Loader2 className="w-8 h-8 text-teal-600 animate-spin" />
@@ -1083,7 +1089,7 @@ export default function CitizenExplorePage() {
             {clickedLatLng && mapMode === 'add-point' && (
               <Marker position={[clickedLatLng.lat, clickedLatLng.lng]} icon={createNewPointIcon()}>
                 <Popup>
-                  <p className="font-semibold text-sm text-cyan-600">New Water Point</p>
+                  <p className="font-semibold text-sm text-teal-600">New Water Point</p>
                   <p className="text-xs text-slate-500">{clickedLatLng.lat.toFixed(4)}, {clickedLatLng.lng.toFixed(4)}</p>
                 </Popup>
               </Marker>
@@ -1094,45 +1100,51 @@ export default function CitizenExplorePage() {
         {/* Right Panel */}
         <div className="w-full lg:w-96 space-y-4">
           {/* Filters */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-              <Filter className="w-4 h-4" /> Filters
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+              <Filter className="w-4 h-4 text-slate-500" /> Map Filters
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="relative">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status</label>
                 <select
                   value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as WaterpointStatus | 'all')}
-                  className="appearance-none w-full pl-3 pr-8 py-2 rounded-lg border border-slate-200 bg-white text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  onChange={(e) => {
+                    setFilterStatus(e.target.value as any);
+                    setSelectedPoint(null);
+                  }}
+                  className="w-full appearance-none pl-3 pr-8 py-2 border border-slate-200 rounded-xl bg-white text-xs text-slate-600 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                 >
-                  <option value="all">All Status</option>
+                  <option value="all">All Statuses</option>
                   <option value="functional">Functional</option>
                   <option value="faulty">Faulty</option>
                   <option value="under_repair">Under Repair</option>
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
-              <div className="relative">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Type</label>
                 <select
                   value={filterType}
-                  onChange={(e) => setFilterType(e.target.value as WaterpointType | 'all')}
-                  className="appearance-none w-full pl-3 pr-8 py-2 rounded-lg border border-slate-200 bg-white text-xs text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                  onChange={(e) => {
+                    setFilterType(e.target.value as any);
+                    setSelectedPoint(null);
+                  }}
+                  className="w-full appearance-none pl-3 pr-8 py-2 border border-slate-200 rounded-xl bg-white text-xs text-slate-600 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                 >
                   <option value="all">All Types</option>
                   <option value="borehole">Borehole</option>
                   <option value="well">Well</option>
                   <option value="tap">Public Tap</option>
                 </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
           </div>
 
           {/* Selected Waterpoint Detail */}
           {selectedPoint && mapMode === 'view' && (
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-heading font-700 text-base text-slate-900 tracking-tight">{selectedPoint.name}</h3>
+                <h3 className="font-heading font-700 text-base text-slate-800 tracking-tight">{selectedPoint.name}</h3>
                 <button onClick={() => setSelectedPoint(null)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">
                   <X className="w-4 h-4" />
                 </button>
@@ -1145,35 +1157,45 @@ export default function CitizenExplorePage() {
                 }}>
                   {statusLabels[selectedPoint.status]}
                 </span>
-                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200/60">
                   {typeLabels[selectedPoint.type]}
                 </span>
               </div>
-              <div className="space-y-2 text-sm mb-4">
-                <p className="text-slate-700"><span className="text-slate-400 font-medium">Location:</span> {selectedPoint.community}, {selectedPoint.lga}</p>
-                <p className="text-slate-700 font-mono text-xs"><span className="text-slate-400 font-medium">Coords:</span> {selectedPoint.latitude.toFixed(4)}, {selectedPoint.longitude.toFixed(4)}</p>
-                {selectedPoint.description && <p className="text-slate-600">{selectedPoint.description}</p>}
+              <div className="space-y-2 text-xs mb-5">
+                <p className="text-slate-600 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  <span className="text-slate-400 font-medium">Location:</span> {selectedPoint.community}, {selectedPoint.lga}
+                </p>
+                <p className="text-slate-600 flex items-center gap-1.5 font-mono">
+                  <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  <span className="text-slate-400 font-medium font-sans">Coords:</span> {selectedPoint.latitude.toFixed(4)}, {selectedPoint.longitude.toFixed(4)}
+                </p>
+                {selectedPoint.description && (
+                  <p className="text-slate-500 mt-2 bg-slate-50/60 p-2.5 rounded-xl border border-slate-100 italic">
+                    "{selectedPoint.description}"
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => openGoogleMaps(selectedPoint)}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold shadow-sm transition-all"
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold shadow-sm transition-all"
               >
-                <Navigation className="w-4 h-4" /> Get Directions
+                <Navigation className="w-4 h-4 text-slate-500" /> Open Navigation
               </button>
             </div>
           )}
 
           {/* Report Form */}
           {mapMode === 'report' && clickedLatLng && (
-            <div className="bg-white rounded-xl border border-amber-200 p-5">
+            <div className="bg-white rounded-2xl border border-amber-200 p-5 shadow-sm bg-amber-50/10">
               <h3 className="font-heading font-700 text-base text-slate-900 tracking-tight mb-1">Report a Fault</h3>
-              <p className="text-xs text-slate-500 mb-4">Location: {clickedLatLng.lat.toFixed(4)}, {clickedLatLng.lng.toFixed(4)}</p>
+              <p className="text-xs text-slate-500 mb-4">Location Coordinates: {clickedLatLng.lat.toFixed(4)}, {clickedLatLng.lng.toFixed(4)}</p>
               {reportSuccess ? (
                 <div className="text-center py-4">
                   <CheckCircle2 className="w-8 h-8 text-teal-600 mx-auto mb-2" />
                   <p className="text-sm font-semibold text-slate-900">Report submitted!</p>
                   <p className="text-xs text-slate-500 mt-1">The water corporation will review your report.</p>
-                  <button onClick={cancelMode} className="mt-4 text-sm font-medium text-teal-700 hover:text-teal-800">Done</button>
+                  <button onClick={cancelMode} className="mt-4 text-sm font-semibold text-teal-700 hover:text-teal-800">Done</button>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -1182,7 +1204,7 @@ export default function CitizenExplorePage() {
                     <select
                       value={reportForm.waterpointId}
                       onChange={(e) => setReportForm({ ...reportForm, waterpointId: e.target.value })}
-                      className="field-input text-sm"
+                      className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-xl bg-white text-xs text-slate-600 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
                     >
                       <option value="">None — general report</option>
                       {waterpoints.map((wp) => (
@@ -1191,18 +1213,72 @@ export default function CitizenExplorePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Describe the problem</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Describe the problem *</label>
                     <textarea
                       value={reportForm.description}
                       onChange={(e) => setReportForm({ ...reportForm, description: e.target.value })}
-                      className="field-input text-sm min-h-[80px] resize-none"
+                      className="w-full p-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-700 placeholder-slate-400 min-h-[80px] resize-none"
                       placeholder="What is wrong with the water point? Be specific…"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider">Image Evidence</label>
+                    {reportForm.photoUrl ? (
+                      <div className="relative rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                        <img
+                          src={reportForm.photoUrl}
+                          alt="Evidence preview"
+                          className="w-full h-32 object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setReportForm({ ...reportForm, photoUrl: '' })}
+                          className="absolute top-2 right-2 p-1.5 bg-white/90 hover:bg-white text-rose-600 rounded-lg shadow-sm border border-slate-100 hover:text-rose-700 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-300 hover:border-teal-500 rounded-xl cursor-pointer bg-slate-50/50 hover:bg-slate-50 transition-all">
+                        <div className="flex flex-col items-center justify-center pt-4 pb-4">
+                          {uploadingReportImage ? (
+                            <Loader2 className="w-6 h-6 text-teal-600 animate-spin" />
+                          ) : (
+                            <>
+                              <Camera className="w-6 h-6 text-slate-400 mb-1" />
+                              <p className="text-xs text-slate-500 font-medium">Click to upload photo evidence</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">PNG, JPG up to 5MB</p>
+                            </>
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingReportImage}
+                          onChange={async (e) => {
+                            const files = e.target.files;
+                            if (!files || files.length === 0) return;
+                            setUploadingReportImage(true);
+                            try {
+                              const result = await uploadImages([files[0]]);
+                              setReportForm({ ...reportForm, photoUrl: result.imageUrl });
+                              toast('success', 'Image uploaded successfully!');
+                            } catch (err) {
+                              const msg = err instanceof ApiError ? err.message : 'Failed to upload image';
+                              toast('error', msg);
+                            } finally {
+                              setUploadingReportImage(false);
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
                   <button
                     onClick={submitReport}
-                    disabled={reportSubmitting || !reportForm.description}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
+                    disabled={reportSubmitting || !reportForm.description || uploadingReportImage}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
                   >
                     {reportSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     Submit Report
@@ -1214,25 +1290,25 @@ export default function CitizenExplorePage() {
 
           {/* Add Waterpoint Form */}
           {mapMode === 'add-point' && clickedLatLng && (
-            <div className="bg-white rounded-xl border border-cyan-200 p-5">
-              <h3 className="font-heading font-700 text-base text-slate-900 tracking-tight mb-1">Add Water Point</h3>
-              <p className="text-xs text-slate-500 mb-4">Location: {clickedLatLng.lat.toFixed(4)}, {clickedLatLng.lng.toFixed(4)}</p>
+            <div className="bg-white rounded-2xl border border-teal-200 p-5 shadow-sm bg-teal-50/10">
+              <h3 className="font-heading font-700 text-base text-slate-900 tracking-tight mb-1">Register Water Point</h3>
+              <p className="text-xs text-slate-500 mb-4">Location Coordinates: {clickedLatLng.lat.toFixed(4)}, {clickedLatLng.lng.toFixed(4)}</p>
               {wpSuccess ? (
                 <div className="text-center py-4">
                   <CheckCircle2 className="w-8 h-8 text-teal-600 mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-slate-900">Water point added!</p>
+                  <p className="text-sm font-semibold text-slate-900">Water point registered!</p>
                   <p className="text-xs text-slate-500 mt-1">It will appear on the map for everyone.</p>
-                  <button onClick={cancelMode} className="mt-4 text-sm font-medium text-teal-700 hover:text-teal-800">Done</button>
+                  <button onClick={cancelMode} className="mt-4 text-sm font-semibold text-teal-700 hover:text-teal-800">Done</button>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Name *</label>
-                    <input type="text" value={wpForm.name} onChange={(e) => setWpForm({ ...wpForm, name: e.target.value })} className="field-input text-sm" placeholder="e.g. Adewole Borehole" />
+                    <input type="text" value={wpForm.name} onChange={(e) => setWpForm({ ...wpForm, name: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-700" placeholder="e.g. Adewole Borehole" />
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Type</label>
-                    <select value={wpForm.type} onChange={(e) => setWpForm({ ...wpForm, type: e.target.value as WaterpointType })} className="field-input text-sm">
+                    <select value={wpForm.type} onChange={(e) => setWpForm({ ...wpForm, type: e.target.value as WaterpointType })} className="w-full pl-3 pr-8 py-2 border border-slate-200 rounded-xl bg-white text-xs text-slate-600 font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500">
                       <option value="borehole">Borehole</option>
                       <option value="well">Well</option>
                       <option value="tap">Public Tap</option>
@@ -1241,24 +1317,24 @@ export default function CitizenExplorePage() {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">Community</label>
-                      <input type="text" value={wpForm.community} onChange={(e) => setWpForm({ ...wpForm, community: e.target.value })} className="field-input text-sm" placeholder="e.g. Adewole" />
+                      <input type="text" value={wpForm.community} onChange={(e) => setWpForm({ ...wpForm, community: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-700" placeholder="e.g. Adewole" />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">LGA</label>
-                      <input type="text" value={wpForm.lga} onChange={(e) => setWpForm({ ...wpForm, lga: e.target.value })} className="field-input text-sm" placeholder="e.g. Ilorin West" />
+                      <input type="text" value={wpForm.lga} onChange={(e) => setWpForm({ ...wpForm, lga: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-700" placeholder="e.g. Ilorin West" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Description</label>
-                    <textarea value={wpForm.description} onChange={(e) => setWpForm({ ...wpForm, description: e.target.value })} className="field-input text-sm min-h-[60px] resize-none" placeholder="Optional details…" />
+                    <textarea value={wpForm.description} onChange={(e) => setWpForm({ ...wpForm, description: e.target.value })} className="w-full p-3 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-700 min-h-[60px] resize-none" placeholder="Optional details…" />
                   </div>
                   <button
                     onClick={submitWaterpoint}
                     disabled={wpSubmitting || !wpForm.name}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
                   >
                     {wpSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                    Add Water Point
+                    Register Water Point
                   </button>
                 </div>
               )}
@@ -1266,8 +1342,8 @@ export default function CitizenExplorePage() {
           )}
 
           {/* Legend */}
-          <div className="bg-white/90 backdrop-blur-sm rounded-xl border border-slate-200 p-4">
-            <p className="text-xs font-semibold text-slate-900 mb-2">Status Legend</p>
+          <div className="bg-white/90 backdrop-blur-sm rounded-2xl border border-slate-200 p-4 shadow-sm">
+            <p className="text-xs font-bold text-slate-700 mb-2">Status Legend</p>
             <div className="space-y-1.5">
               {(['functional', 'faulty', 'under_repair'] as WaterpointStatus[]).map((s) => {
                 const icons: Record<string, typeof CheckCircle2> = { functional: CheckCircle2, faulty: AlertTriangle, under_repair: Wrench };

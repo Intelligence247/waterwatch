@@ -20,6 +20,13 @@ export async function requireAuth(req, _res, next) {
     const user = await User.findById(payload.sub).lean();
     if (!user) throw new HttpError(401, "User no longer exists");
 
+    if (user.status === "blocked") {
+      throw new HttpError(403, "Your account has been blocked. Please contact support.");
+    }
+    if (user.status === "suspended") {
+      throw new HttpError(403, `Your account is temporarily suspended${user.statusReason ? `: ${user.statusReason}` : "."}`);
+    }
+
     req.authUser = {
       id: String(user._id),
       email: user.email,

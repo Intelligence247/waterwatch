@@ -14,6 +14,7 @@ import CitizenLayout from './components/citizen/CitizenLayout';
 import { Loader2 } from 'lucide-react';
 
 const DashboardOverview = lazy(() => import('./pages/admin/DashboardOverview'));
+const UsersPage = lazy(() => import('./pages/admin/UsersPage'));
 const WaterpointsPage = lazy(() => import('./pages/admin/WaterpointsPage'));
 const ReportsPage = lazy(() => import('./pages/admin/ReportsPage'));
 const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage'));
@@ -72,6 +73,7 @@ function AppRoutes() {
           }
         >
           <Route index element={<DashboardOverview />} />
+          <Route path="users" element={<UsersPage />} />
           <Route path="waterpoints" element={<WaterpointsPage />} />
           <Route path="dedupe" element={<AdminDedupePage />} />
           <Route path="reports" element={<ReportsPage />} />

@@ -26,3 +26,19 @@ export interface Waterpoint {
   created_at: string;
   updated_at: string;
 }
+
+export type UserStatus = 'active' | 'suspended' | 'blocked';
+
+export interface User {
+  id: string;
+  fullName: string;
+  email: string;
+  role: 'admin' | 'citizen';
+  phone?: string | null;
+  community?: string | null;
+  emailVerified: boolean;
+  status: UserStatus;
+  statusReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
