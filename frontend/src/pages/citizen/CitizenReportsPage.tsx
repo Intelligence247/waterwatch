@@ -463,6 +463,15 @@ export default function CitizenReportsPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (profile) {
+      setForm((prev) => ({
+        ...prev,
+        community: prev.community || profile.community || '',
+      }));
+    }
+  }, [profile]);
+
   // Location state
   const [locating, setLocating] = useState(false);
   const [locationPhase, setLocationPhase] = useState<LocationPhase | null>(null);
@@ -542,7 +551,7 @@ export default function CitizenReportsPage() {
 
   const [waterpoints, setWaterpoints] = useState<Array<{ id: string; name: string }>>([]);
   useEffect(() => {
-    listWaterpoints({ limit: 100 })
+    listWaterpoints({ limit: 100, auth: true })
       .then((data) => setWaterpoints(data.items.map((item) => ({ id: item.id, name: item.name }))))
       .catch(() => setWaterpoints([]));
   }, []);

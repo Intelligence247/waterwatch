@@ -20,13 +20,14 @@ type BackendUser = {
   role: 'admin' | 'citizen';
   phone?: string | null;
   community?: string | null;
+  lga?: string | null;
   emailVerified: boolean;
 };
 
 interface AuthContextType {
   user: AuthUser | null;
   session: AuthSession;
-  profile: { full_name: string; role: string; phone?: string; community?: string } | null;
+  profile: { full_name: string; role: string; phone?: string; community?: string; lga?: string } | null;
   userRole: UserRole;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null; fullName?: string }>;
@@ -36,7 +37,8 @@ interface AuthContextType {
     fullName: string,
     inviteToken: string,
   ) => Promise<{ error: string | null }>;
-  signUpCitizen: (email: string, password: string, fullName: string, phone: string, community: string) => Promise<{ error: string | null }>;
+  signUpCitizen: (email: string, password: string, fullName: string, phone: string, community: string, lga: string) => Promise<{ error: string | null }>;
+  updateProfile: (updates: { fullName?: string; phone?: string; community?: string; lga?: string }) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -45,7 +47,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<AuthSession>(null);
-  const [profile, setProfile] = useState<{ full_name: string; role: string; phone?: string; community?: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name: string; role: string; phone?: string; community?: string; lga?: string } | null>(null);
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
 
@@ -67,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: backendUser.role,
       ...(backendUser.phone ? { phone: backendUser.phone } : {}),
       ...(backendUser.community ? { community: backendUser.community } : {}),
+      ...(backendUser.lga ? { lga: backendUser.lga } : {}),
     });
     setUserRole(backendUser.role);
   };
@@ -175,7 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signUpCitizen = async (email: string, password: string, fullName: string, phone: string, community: string) => {
+  const signUpCitizen = async (email: string, password: string, fullName: string, phone: string, community: string, lga: string) => {
     try {
       await api.post('/api/auth/register', {
         fullName,
@@ -184,11 +187,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: 'citizen',
         phone,
         community,
+        lga,
       });
       return { error: null };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed';
       return { error: message };
+    }
+  };
+
+  const updateProfile = async (updates: { fullName?: string; phone?: string; community?: string; lga?: string }) => {
+    const data = await api.put<{ user: BackendUser }>('/api/auth/profile', updates, { auth: true });
+    if (data?.user) {
+      applyBackendUser(data.user);
     }
   };
 
@@ -206,7 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, userRole, loading, signIn, signUpAdmin, signUpCitizen, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, userRole, loading, signIn, signUpAdmin, signUpCitizen, updateProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );

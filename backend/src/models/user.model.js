@@ -46,6 +46,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    lga: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true,
+    },
     emailVerified: {
       type: Boolean,
       default: false,

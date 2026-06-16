@@ -14,6 +14,12 @@ const commentSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    lga: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true,
+    },
     content: {
       type: String,
       required: true,

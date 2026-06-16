@@ -243,7 +243,12 @@ export async function listWaterpoints(req, res) {
   if (type) filter.type = type;
   if (status) filter.status = status;
   if (community) filter.community = community;
-  if (lga) filter.lga = lga;
+  
+  if (req.authUser && req.authUser.role === "citizen") {
+    filter.lga = req.authUser.lga;
+  } else if (lga) {
+    filter.lga = lga;
+  }
   if (q) {
     const safe = escapeRegex(q);
     filter.$or = [

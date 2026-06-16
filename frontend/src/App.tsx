@@ -24,6 +24,7 @@ const CitizenOverview = lazy(() => import('./pages/citizen/CitizenOverview'));
 const CitizenExplorePage = lazy(() => import('./pages/citizen/CitizenExplorePage'));
 const CitizenReportsPage = lazy(() => import('./pages/citizen/CitizenReportsPage'));
 const CitizenCommunityPage = lazy(() => import('./pages/citizen/CitizenCommunityPage'));
+const CitizenSettingsPage = lazy(() => import('./pages/citizen/CitizenSettingsPage'));
 
 function FullScreenLoader() {
   return (
@@ -94,6 +95,7 @@ function AppRoutes() {
           <Route path="explore" element={<CitizenExplorePage />} />
           <Route path="reports" element={<CitizenReportsPage />} />
           <Route path="community" element={<CitizenCommunityPage />} />
+          <Route path="settings" element={<CitizenSettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

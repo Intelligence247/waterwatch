@@ -33,10 +33,14 @@ function toPublicFaultReport(doc) {
 
 export async function createFaultReport(req, res) {
   const payload = req.validated.body;
+  let lga = null;
 
   if (payload.waterpointId) {
-    const exists = await Waterpoint.exists({ _id: payload.waterpointId });
-    if (!exists) throw new HttpError(400, "Referenced waterpoint does not exist");
+    const wp = await Waterpoint.findById(payload.waterpointId).select("lga").lean();
+    if (!wp) throw new HttpError(400, "Referenced waterpoint does not exist");
+    lga = wp.lga;
+  } else {
+    lga = req.authUser.lga;
   }
 
   const report = await FaultReport.create({
@@ -49,6 +53,7 @@ export async function createFaultReport(req, res) {
     latitude: payload.latitude ?? null,
     longitude: payload.longitude ?? null,
     community: payload.community,
+    lga,
     status: "pending",
   });
 

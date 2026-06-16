@@ -32,6 +32,7 @@ function toPublicUser(user) {
     role: user.role,
     phone: user.phone,
     community: user.community,
+    lga: user.lga ?? null,
     emailVerified: user.emailVerified,
     status: user.status ?? "active",
     statusReason: user.statusReason ?? null,
@@ -88,7 +89,7 @@ async function createAndSendPasswordReset(user, env) {
 
 export async function register(req, res) {
   const env = loadEnv();
-  const { fullName, email, password, role, phone, community } = req.validated.body;
+  const { fullName, email, password, role, phone, community, lga } = req.validated.body;
   const normalizedEmail = email.trim().toLowerCase();
   const requestedRole = role ?? "citizen";
 
@@ -109,6 +110,7 @@ export async function register(req, res) {
     role: "citizen",
     phone: phone ?? null,
     community: community ?? null,
+    lga: lga ?? null,
     emailVerified: false,
   });
 
@@ -465,6 +467,25 @@ export async function registerAdminWithInvite(req, res) {
 
   res.status(201).json({
     message: "Admin registration successful. Please verify your email.",
+    user: toPublicUser(user),
+  });
+}
+
+export async function updateProfile(req, res) {
+  const { fullName, phone, community, lga } = req.validated.body;
+
+  const user = await User.findById(req.authUser.id);
+  if (!user) throw new HttpError(404, "User not found");
+
+  if (fullName !== undefined) user.fullName = fullName;
+  if (phone !== undefined) user.phone = phone;
+  if (community !== undefined) user.community = community;
+  if (lga !== undefined) user.lga = lga;
+
+  await user.save();
+
+  res.json({
+    message: "Profile updated successfully",
     user: toPublicUser(user),
   });
 }

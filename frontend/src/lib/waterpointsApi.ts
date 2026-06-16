@@ -185,6 +185,7 @@ export async function listWaterpoints(params?: {
   q?: string;
   page?: number;
   limit?: number;
+  auth?: boolean;
 }) {
   const query = new URLSearchParams();
   if (params?.status) query.set('status', params.status);
@@ -194,7 +195,7 @@ export async function listWaterpoints(params?: {
   if (params?.limit) query.set('limit', String(params.limit));
 
   const path = query.toString() ? `/api/waterpoints?${query.toString()}` : '/api/waterpoints';
-  const response = await api.get<ListResponse>(path);
+  const response = await api.get<ListResponse>(path, { auth: params?.auth ?? false });
   return {
     ...response,
     items: response.items.map(mapBackendWaterpoint),

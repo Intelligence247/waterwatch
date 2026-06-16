@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, Loader2, CheckCircle2, Mail } from 'lucide-react';
+import { Eye, EyeOff, Loader2, CheckCircle2, Mail, ChevronDown } from 'lucide-react';
 import { WaterWatchLogo } from '../../components/brand/WaterWatchLogo';
+import { KWARA_LGAS } from '../../lib/types';
 
 export default function CitizenRegisterPage() {
   const { signUpCitizen } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [lga, setLga] = useState('');
   const [community, setCommunity] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +28,7 @@ export default function CitizenRegisterPage() {
       return;
     }
     setSubmitting(true);
-    const { error: err } = await signUpCitizen(email, password, fullName, phone, community);
+    const { error: err } = await signUpCitizen(email, password, fullName, phone, community, lga);
     setSubmitting(false);
     if (err) {
       setError(err === 'User already registered' ? 'An account with this email already exists.' : err);
@@ -179,6 +181,31 @@ export default function CitizenRegisterPage() {
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm"
                 placeholder="08012345678"
               />
+            </div>
+
+            <div>
+              <label htmlFor="lga" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Local Government Area (LGA)
+              </label>
+              <div className="relative">
+                <select
+                  id="lga"
+                  required
+                  value={lga}
+                  onChange={(e) => setLga(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all text-sm appearance-none"
+                >
+                  <option value="" disabled>Select your LGA</option>
+                  {KWARA_LGAS.map((lgaOption) => (
+                    <option key={lgaOption} value={lgaOption}>
+                      {lgaOption}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                </div>
+              </div>
             </div>
 
             <div>

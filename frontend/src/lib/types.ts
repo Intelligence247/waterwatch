@@ -27,6 +27,25 @@ export interface Waterpoint {
   updated_at: string;
 }
 
+export const KWARA_LGAS = [
+  'Asa',
+  'Baruten',
+  'Edu',
+  'Ekiti',
+  'Ifelodun',
+  'Ilorin East',
+  'Ilorin South',
+  'Ilorin West',
+  'Irepodun',
+  'Isin',
+  'Kaiama',
+  'Moro',
+  'Offa',
+  'Oke Ero',
+  'Oyun',
+  'Pategi',
+] as const;
+
 export type UserStatus = 'active' | 'suspended' | 'blocked';
 
 export interface User {
@@ -36,6 +55,7 @@ export interface User {
   role: 'admin' | 'citizen';
   phone?: string | null;
   community?: string | null;
+  lga?: string | null;
   emailVerified: boolean;
   status: UserStatus;
   statusReason?: string | null;

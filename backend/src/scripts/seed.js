@@ -43,6 +43,7 @@ async function seed() {
       emailVerified: true,
       phone: "08030000002",
       community: "Ilorin South",
+      lga: "Ilorin South",
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );

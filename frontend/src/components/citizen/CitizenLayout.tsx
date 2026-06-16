@@ -11,6 +11,7 @@ import {
   X,
   ChevronRight,
   MapPin,
+  Settings,
 } from 'lucide-react';
 import { WaterWatchLogo } from '../brand/WaterWatchLogo';
 
@@ -19,6 +20,7 @@ const sidebarLinks = [
   { to: '/citizen/explore', icon: Map, label: 'Explore Map', end: false },
   { to: '/citizen/reports', icon: AlertTriangle, label: 'My Reports', end: false },
   { to: '/citizen/community', icon: MessageSquare, label: 'Community', end: false },
+  { to: '/citizen/settings', icon: Settings, label: 'Settings', end: false },
 ];
 
 const breadcrumbMap: Record<string, string> = {
@@ -26,6 +28,7 @@ const breadcrumbMap: Record<string, string> = {
   '/citizen/explore': 'Explore Map',
   '/citizen/reports': 'My Reports',
   '/citizen/community': 'Community',
+  '/citizen/settings': 'Settings',
 };
 
 export default function CitizenLayout() {

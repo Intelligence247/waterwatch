@@ -31,11 +31,42 @@ export async function requireAuth(req, _res, next) {
       id: String(user._id),
       email: user.email,
       role: user.role,
+      lga: user.lga,
       emailVerified: user.emailVerified,
     };
     next();
   } catch {
     throw new HttpError(401, "Invalid or expired authorization token");
+  }
+}
+
+export async function maybeAuth(req, _res, next) {
+  const token = parseBearer(req.headers.authorization);
+  if (!token) return next();
+
+  try {
+    const env = loadEnv();
+    const payload = verifyAccessToken(token, env);
+    const user = await User.findById(payload.sub).lean();
+    if (user) {
+      if (user.status === "blocked") {
+        throw new HttpError(403, "Your account has been blocked. Please contact support.");
+      }
+      if (user.status === "suspended") {
+        throw new HttpError(403, `Your account is temporarily suspended${user.statusReason ? `: ${user.statusReason}` : "."}`);
+      }
+
+      req.authUser = {
+        id: String(user._id),
+        email: user.email,
+        role: user.role,
+        lga: user.lga,
+        emailVerified: user.emailVerified,
+      };
+    }
+    next();
+  } catch {
+    next();
   }
 }
 

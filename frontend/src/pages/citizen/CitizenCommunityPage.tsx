@@ -16,7 +16,6 @@ import {
 interface Comment {
   id: string;
   waterpoint_id: string | null;
-  fault_report_id: string | null;
   author_id: string;
   content: string;
   created_at: string;
@@ -50,7 +49,7 @@ export default function CitizenCommunityPage() {
 
   const fetchWaterpoints = useCallback(async () => {
     try {
-      const data = await listWaterpoints({ limit: 100 });
+      const data = await listWaterpoints({ limit: 100, auth: true });
       setWaterpoints(data.items.map((item) => ({ id: item.id, name: item.name })));
     } catch {
       setWaterpoints([]);
@@ -102,7 +101,7 @@ export default function CitizenCommunityPage() {
         <h1 className="font-heading font-800 text-2xl text-slate-900 tracking-tight flex items-center gap-2">
           Community Feed
         </h1>
-        <p className="text-sm text-slate-500 mt-1">Discuss water issues, coordinate reports, and share updates with neighbors in your local area.</p>
+        <p className="text-sm text-slate-500 mt-1">Discuss water issues, coordinate reports, and share updates with neighbors in your local area{profile?.lga ? ` (${profile.lga} LGA)` : ''}.</p>
       </div>
 
       {/* Post Comment */}

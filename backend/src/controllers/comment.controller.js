@@ -1,6 +1,7 @@
 import { HttpError } from "../middleware/errorHandler.js";
 import { Comment } from "../models/comment.model.js";
 import { Waterpoint } from "../models/waterpoint.model.js";
+import { User } from "../models/user.model.js";
 
 function toPublicComment(doc) {
   const author = doc.authorId && typeof doc.authorId === "object"
@@ -30,14 +31,21 @@ function toPublicComment(doc) {
 
 export async function createComment(req, res) {
   const payload = req.validated.body;
+  let lga = null;
+
   if (payload.waterpointId) {
-    const exists = await Waterpoint.exists({ _id: payload.waterpointId });
-    if (!exists) throw new HttpError(400, "Referenced waterpoint does not exist");
+    const wp = await Waterpoint.findById(payload.waterpointId).select("lga").lean();
+    if (!wp) throw new HttpError(400, "Referenced waterpoint does not exist");
+    lga = wp.lga;
+  } else {
+    const user = await User.findById(req.authUser.id).select("lga").lean();
+    lga = user?.lga ?? null;
   }
 
   const comment = await Comment.create({
     waterpointId: payload.waterpointId ?? null,
     authorId: req.authUser.id,
+    lga,
     content: payload.content,
   });
 
@@ -56,6 +64,10 @@ export async function listComments(req, res) {
   const { page, limit, waterpointId } = req.validated.query;
   const skip = (page - 1) * limit;
   const filter = waterpointId ? { waterpointId } : {};
+
+  if (req.authUser.role === "citizen") {
+    filter.lga = req.authUser.lga;
+  }
 
   const [items, total] = await Promise.all([
     Comment.find(filter)

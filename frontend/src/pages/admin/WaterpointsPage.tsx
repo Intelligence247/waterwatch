@@ -797,6 +797,7 @@ import {
 } from '../../lib/waterpointsApi';
 import { uploadImages } from '../../lib/uploadsApi';
 import type { Waterpoint, WaterpointType, WaterpointStatus } from '../../lib/types';
+import { KWARA_LGAS } from '../../lib/types';
 import { useToast } from '../../components/ui/ToastProvider';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import {
@@ -1407,11 +1408,21 @@ export default function WaterpointsPage() {
                   />
                 </Field>
                 <Field label="LGA" required>
-                  <input
-                    type="text" value={form.lga}
-                    onChange={(e) => setForm({ ...form, lga: e.target.value })}
-                    className="field-input" placeholder="e.g. Ilorin West"
-                  />
+                  <div className="relative">
+                    <select
+                      value={form.lga}
+                      onChange={(e) => setForm({ ...form, lga: e.target.value })}
+                      className="field-input appearance-none w-full"
+                    >
+                      <option value="" disabled>Select LGA</option>
+                      {KWARA_LGAS.map((lgaOption) => (
+                        <option key={lgaOption} value={lgaOption}>{lgaOption}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <ChevronDown className="h-4 w-4 text-slate-400" />
+                    </div>
+                  </div>
                 </Field>
               </div>
 

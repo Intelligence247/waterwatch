@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { KWARA_LGAS } from "../config/constants.js";
 
 const objectIdLike = /^[a-fA-F0-9]{24}$/;
 
@@ -15,7 +16,7 @@ const createBody = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   community: stringTrimmed.min(2).max(120),
-  lga: stringTrimmed.min(2).max(120),
+  lga: z.enum(KWARA_LGAS, { errorMap: () => ({ message: "Invalid Local Government Area (LGA)" }) }),
   description: stringTrimmed.max(1000).optional().default(""),
   photoUrls: z.array(z.string().url()).max(5).optional().default([]),
   // Backward-compatibility for existing clients sending single image

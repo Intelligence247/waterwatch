@@ -9,7 +9,7 @@ import {
   resolveDuplicateReview,
   updateWaterpoint,
 } from "../controllers/waterpoint.controller.js";
-import { requireAuth, requireRole } from "../middleware/auth.js";
+import { maybeAuth, requireAuth, requireRole } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js";
 import {
   createWaterpointSchema,
@@ -25,7 +25,7 @@ import {
 export const waterpointRouter = Router();
 
 // Public/Citizen/Admin read endpoints
-waterpointRouter.get("/", validate(listWaterpointsSchema), listWaterpoints);
+waterpointRouter.get("/", maybeAuth, validate(listWaterpointsSchema), listWaterpoints);
 waterpointRouter.get(
   "/dedupe-audit",
   requireAuth,

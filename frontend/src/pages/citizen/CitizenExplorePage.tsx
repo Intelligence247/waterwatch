@@ -691,6 +691,7 @@ import L from 'leaflet';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../components/ui/ToastProvider';
 import type { Waterpoint, WaterpointStatus, WaterpointType } from '../../lib/types';
+import { KWARA_LGAS } from '../../lib/types';
 import { ApiError } from '../../lib/apiClient';
 import { createWaterpoint, listWaterpoints } from '../../lib/waterpointsApi';
 import { createFaultReport } from '../../lib/faultReportsApi';
@@ -718,6 +719,7 @@ import {
   Clock,
   Camera,
   Trash2,
+  ChevronDown,
 } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -817,6 +819,16 @@ export default function CitizenExplorePage() {
   const [wpSubmitting, setWpSubmitting] = useState(false);
   const [wpSuccess, setWpSuccess] = useState(false);
 
+  useEffect(() => {
+    if (profile) {
+      setWpForm(prev => ({
+        ...prev,
+        community: prev.community || profile.community || '',
+        lga: prev.lga || profile.lga || '',
+      }));
+    }
+  }, [profile]);
+
   // Location state
   const [locating, setLocating] = useState(false);
   const [locationPhase, setLocationPhase] = useState<LocationPhase | null>(null);
@@ -829,6 +841,7 @@ export default function CitizenExplorePage() {
         ...(filterStatus !== 'all' ? { status: filterStatus } : {}),
         ...(filterType !== 'all' ? { type: filterType } : {}),
         limit: 100,
+        auth: true,
       });
       setWaterpoints(result.items);
     } catch {
@@ -859,7 +872,7 @@ export default function CitizenExplorePage() {
     setClickedLatLng(null);
     setCapturedAccuracyMeters(null);
     setReportForm({ description: '', waterpointId: '', photoUrl: '' });
-    setWpForm({ name: '', type: 'borehole', community: '', lga: '', description: '' });
+    setWpForm({ name: '', type: 'borehole', community: profile?.community || '', lga: profile?.lga || '', description: '' });
     setReportSuccess(false);
     setWpSuccess(false);
   };
@@ -1320,8 +1333,22 @@ export default function CitizenExplorePage() {
                       <input type="text" value={wpForm.community} onChange={(e) => setWpForm({ ...wpForm, community: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-700" placeholder="e.g. Adewole" />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">LGA</label>
-                      <input type="text" value={wpForm.lga} onChange={(e) => setWpForm({ ...wpForm, lga: e.target.value })} className="w-full p-2.5 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 text-slate-700" placeholder="e.g. Ilorin West" />
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Local Government Area (LGA) *</label>
+                      <div className="relative">
+                        <select
+                          value={wpForm.lga}
+                          onChange={(e) => setWpForm({ ...wpForm, lga: e.target.value })}
+                          className="w-full pl-3 pr-8 py-2.5 border border-slate-200 rounded-xl bg-white text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 appearance-none"
+                        >
+                          <option value="" disabled>Select LGA</option>
+                          {KWARA_LGAS.map((lgaOption) => (
+                            <option key={lgaOption} value={lgaOption}>{lgaOption}</option>
+                          ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <ChevronDown className="h-4 w-4 text-slate-400" />
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div>

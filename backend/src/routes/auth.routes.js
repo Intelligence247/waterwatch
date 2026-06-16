@@ -14,6 +14,7 @@ import {
   revokeAdminInvite,
   resetPassword,
   resendVerification,
+  updateProfile,
   verifyEmail,
 } from "../controllers/auth.controller.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
@@ -30,6 +31,7 @@ import {
   revokeAdminInviteSchema,
   resetPasswordSchema,
   resendVerificationSchema,
+  updateProfileSchema,
   verifyEmailSchema,
 } from "../validators/auth.validators.js";
 
@@ -52,6 +54,7 @@ authRouter.post("/login", validate(loginSchema), login);
 authRouter.post("/refresh", validate(refreshTokenSchema), refreshToken);
 authRouter.post("/logout", logout);
 authRouter.get("/me", requireAuth, getMe);
+authRouter.put("/profile", requireAuth, validate(updateProfileSchema), updateProfile);
 authRouter.post("/forgot-password", validate(forgotPasswordSchema), forgotPassword);
 authRouter.post("/reset-password", validate(resetPasswordSchema), resetPassword);
 authRouter.post("/change-password", requireAuth, validate(changePasswordSchema), changePassword);

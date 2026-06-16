@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { KWARA_LGAS } from "../config/constants.js";
 
 const passwordSchema = z
   .string()
@@ -13,6 +14,7 @@ export const registerSchema = z.object({
     role: z.enum(["admin", "citizen"]).optional(),
     phone: z.string().trim().min(5).max(30).optional(),
     community: z.string().trim().min(2).max(120).optional(),
+    lga: z.enum(KWARA_LGAS, { required_error: "Local Government Area (LGA) is required" }),
   }),
   query: z.object({}).optional(),
   params: z.object({}).optional(),
@@ -114,3 +116,15 @@ export const registerAdminWithInviteSchema = z.object({
   query: z.object({}).optional(),
   params: z.object({}).optional(),
 });
+
+export const updateProfileSchema = z.object({
+  body: z.object({
+    fullName: z.string().trim().min(2).max(120).optional(),
+    phone: z.string().trim().min(5).max(30).nullable().optional(),
+    community: z.string().trim().min(2).max(120).nullable().optional(),
+    lga: z.enum(KWARA_LGAS).optional(),
+  }),
+  query: z.object({}).optional(),
+  params: z.object({}).optional(),
+});
+

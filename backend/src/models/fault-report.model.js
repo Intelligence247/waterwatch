@@ -59,6 +59,12 @@ const faultReportSchema = new mongoose.Schema(
       maxlength: 120,
       index: true,
     },
+    lga: {
+      type: String,
+      trim: true,
+      default: null,
+      index: true,
+    },
     status: {
       type: String,
       enum: ["pending", "verified", "dismissed", "resolved"],
