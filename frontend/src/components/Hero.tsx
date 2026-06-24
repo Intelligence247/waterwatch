@@ -71,30 +71,21 @@ export default function Hero() {
       })
       .catch(() => {
         if (!active) return;
-        setStats({
-          waterPoints: 20,
-          lgasCovered: 16,
-          communitiesServed: 15,
-          loading: false,
-        });
+        setStats({ waterPoints: 20, lgasCovered: 16, communitiesServed: 15, loading: false });
       });
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, []);
 
   return (
     <section className="relative min-h-screen flex items-end overflow-hidden">
-      {/* Full-bleed hero background image */}
+      {/* Full-bleed hero background */}
       <div className="absolute inset-0">
         <img
           src="/hero_background.png"
           alt="Aerial view of a Nigerian community water borehole with solar panels in Kwara State"
           className="w-full h-full object-cover"
         />
-        {/* Dark overlay for text legibility */}
         <div className="absolute inset-0 bg-slate-900/65" />
-        {/* Bottom fade for seamless section transition */}
         <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-slate-900/90 to-transparent" />
       </div>
 
@@ -104,16 +95,25 @@ export default function Hero() {
 
       <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-40 pb-12">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-8 items-end">
-          {/* Left: Copy – 7 columns */}
+
+          {/* Left: Copy */}
           <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 mb-8">
+            {/* Badge */}
+            <div
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 mb-8 animate-fade-up"
+              style={{ animationDelay: '0.05s' }}
+            >
               <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
               <span className="text-xs font-semibold text-teal-100 tracking-wide uppercase">
                 Kwara State Water Corporation
               </span>
             </div>
 
-            <h1 className="font-heading font-extrabold text-4xl sm:text-5xl lg:text-6xl xl:text-7xl tracking-tight text-white leading-[1.08]">
+            {/* Headline */}
+            <h1
+              className="font-heading font-extrabold text-4xl sm:text-5xl lg:text-6xl xl:text-7xl tracking-tight text-white leading-[1.08] animate-fade-up"
+              style={{ animationDelay: '0.18s' }}
+            >
               Intelligence for{' '}
               <span className="relative inline-block">
                 <span className="relative z-10 text-teal-300">Sustainable</span>
@@ -122,11 +122,19 @@ export default function Hero() {
               Water.
             </h1>
 
-            <p className="mt-6 text-lg sm:text-xl text-slate-300 leading-relaxed max-w-lg">
+            {/* Sub-copy */}
+            <p
+              className="mt-6 text-lg sm:text-xl text-slate-300 leading-relaxed max-w-lg animate-fade-up"
+              style={{ animationDelay: '0.32s' }}
+            >
               Real-time geospatial mapping and citizen-driven infrastructure monitoring for every community in Kwara State.
             </p>
 
-            <div className="mt-10 flex flex-col sm:flex-row gap-4">
+            {/* CTAs */}
+            <div
+              className="mt-10 flex flex-col sm:flex-row gap-4 animate-fade-up"
+              style={{ animationDelay: '0.46s' }}
+            >
               <Link
                 to="/map"
                 className="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-base shadow-lg shadow-teal-900/30 transition-all duration-200 group"
@@ -145,8 +153,11 @@ export default function Hero() {
             </div>
           </div>
 
-          {/* Right: Dashboard Preview Card – 5 columns */}
-          <div className="lg:col-span-5 hidden lg:block">
+          {/* Right: Dashboard Preview Card */}
+          <div
+            className="lg:col-span-5 hidden lg:block animate-slide-right"
+            style={{ animationDelay: '0.38s' }}
+          >
             <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-white transform hover:-translate-y-1 transition-transform duration-500">
               {/* Mock browser chrome */}
               <div className="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center gap-2">
@@ -194,10 +205,12 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Stats Bar – full width, solid dark card */}
-        <div className="mt-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 p-6 sm:p-8">
+        {/* Stats Bar */}
+        <div
+          className="mt-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 p-6 sm:p-8 animate-fade-up"
+          style={{ animationDelay: '0.58s' }}
+        >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-0 sm:divide-x sm:divide-white/15">
-            {/* Stat 1 */}
             <div className="flex items-center gap-4 sm:justify-center sm:px-4">
               <div className="w-12 h-12 rounded-xl bg-teal-500/20 flex items-center justify-center flex-shrink-0">
                 <Droplets className="w-6 h-6 text-teal-300" />
@@ -216,7 +229,6 @@ export default function Hero() {
               </div>
             </div>
 
-            {/* Stat 2 */}
             <div className="flex items-center gap-4 sm:justify-center sm:px-4">
               <div className="w-12 h-12 rounded-xl bg-teal-500/20 flex items-center justify-center flex-shrink-0">
                 <Building2 className="w-6 h-6 text-teal-300" />
@@ -235,7 +247,6 @@ export default function Hero() {
               </div>
             </div>
 
-            {/* Stat 3 */}
             <div className="flex items-center gap-4 sm:justify-center sm:px-4">
               <div className="w-12 h-12 rounded-xl bg-teal-500/20 flex items-center justify-center flex-shrink-0">
                 <Users className="w-6 h-6 text-teal-300" />
