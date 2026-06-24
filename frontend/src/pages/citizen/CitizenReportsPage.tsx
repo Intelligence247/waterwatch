@@ -435,7 +435,7 @@ interface FaultReport {
   status: ReportStatus;
   created_at: string;
   waterpoints?: { name: string } | null;
-  resolutionNote?: string | null;
+  resolution_note?: string | null;
 }
 
 const statusConfig: Record<ReportStatus, { label: string; color: string; bg: string; icon: typeof Clock }> = {
@@ -642,13 +642,13 @@ export default function CitizenReportsPage() {
                     </p>
 
                     {/* Resolution Notes blockquote */}
-                    {report.resolutionNote && (
+                    {report.resolution_note && (
                       <div className="mt-3.5 p-3.5 bg-green-50/30 border border-green-200/50 rounded-xl text-xs text-slate-600">
                         <p className="font-semibold text-green-800 flex items-center gap-1.5 mb-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5 text-green-700" />
                           Resolution Notes
                         </p>
-                        <p className="italic text-slate-600">"{report.resolutionNote}"</p>
+                        <p className="italic text-slate-600">"{report.resolution_note}"</p>
                       </div>
                     )}
 

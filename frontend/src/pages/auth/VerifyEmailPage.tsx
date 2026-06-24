@@ -33,7 +33,7 @@ export default function VerifyEmailPage() {
   }, [token]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 py-12">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 px-4 py-12 animate-fade-up">
       <div className="mb-10 rounded-xl bg-slate-900/70 border border-slate-200/80 p-4 inline-block">
         <WaterWatchLogo className="h-10 w-auto" />
       </div>

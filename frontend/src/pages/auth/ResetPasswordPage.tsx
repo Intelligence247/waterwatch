@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex bg-slate-50">
       {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-teal-700 relative overflow-hidden items-center justify-center">
+      <div className="hidden lg:flex lg:w-1/2 bg-teal-700 relative overflow-hidden items-center justify-center animate-slide-left">
         <div
           className="absolute inset-0 opacity-10"
           style={{
@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
 
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md animate-fade-up" style={{ animationDelay: '0.1s' }}>
           <div className="lg:hidden mb-8 rounded-xl bg-slate-900/60 border border-slate-200/80 p-4">
             <WaterWatchLogo className="h-10 w-auto max-w-full" />
           </div>
