@@ -95,12 +95,8 @@ export default function CitizenSettingsPage() {
         { auth: true }
       );
       toast('success', response.message || 'Password changed successfully! Redirecting to login...');
-      
-      // Log out and redirect after short delay
-      setTimeout(async () => {
-        await signOut();
-        navigate('/citizen/login');
-      }, 1500);
+      await signOut();
+      navigate('/citizen/login');
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Failed to change password. Please try again.';
       toast('error', message);
@@ -243,12 +239,12 @@ export default function CitizenSettingsPage() {
               <button
                 type="submit"
                 disabled={savingProfile}
-                className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-xs font-bold text-white rounded-xl disabled:opacity-50 transition-all shadow-md"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-all shadow-sm"
               >
                 {savingProfile ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Save className="w-3.5 h-3.5" />
+                  <Save className="w-4 h-4" />
                 )}
                 Save Changes
               </button>
@@ -313,12 +309,12 @@ export default function CitizenSettingsPage() {
                 <button
                   type="submit"
                   disabled={savingPassword}
-                  className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-slate-800 hover:bg-slate-900 active:bg-black text-xs font-bold text-white rounded-xl disabled:opacity-50 transition-all shadow-md"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-800 hover:bg-slate-900 active:bg-black text-sm font-semibold text-white rounded-xl disabled:opacity-50 transition-all shadow-sm"
                 >
                   {savingPassword ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Lock className="w-3.5 h-3.5" />
+                    <Lock className="w-4 h-4" />
                   )}
                   Update Password
                 </button>

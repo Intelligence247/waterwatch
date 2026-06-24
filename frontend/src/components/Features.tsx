@@ -146,7 +146,7 @@ export default function Features() {
                       </div>
                       <div className="p-6">
                         <div className="w-10 h-10 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform duration-200 -mt-10 relative z-10 shadow-sm">
-                          <Icon className="w-4.5 h-4.5 text-teal-700" />
+                          <Icon className="w-5 h-5 text-teal-700" />
                         </div>
                         <h3 className="font-heading font-bold text-base text-slate-900 tracking-tight mb-2">
                           {feature.title}

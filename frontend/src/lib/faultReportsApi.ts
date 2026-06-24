@@ -43,6 +43,7 @@ export type FaultReportItem = {
   status: ReportStatus;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  resolution_note: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -62,6 +63,7 @@ function mapReport(item: BackendFaultReport): FaultReportItem {
     status: item.status,
     reviewed_by: item.reviewedBy,
     reviewed_at: item.reviewedAt,
+    resolution_note: item.resolutionNote ?? null,
     created_at: item.createdAt,
     updated_at: item.updatedAt,
   };

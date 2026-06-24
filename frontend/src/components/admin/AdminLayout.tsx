@@ -93,7 +93,7 @@ export default function AdminLayout() {
               className={linkClass}
               onClick={() => setSidebarOpen(false)}
             >
-              <link.icon className="w-4.5 h-4.5" />
+              <link.icon className="w-5 h-5" />
               {link.label}
             </NavLink>
           ))}

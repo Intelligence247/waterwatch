@@ -9,6 +9,10 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import CitizenLoginPage from './pages/auth/CitizenLoginPage';
 import CitizenRegisterPage from './pages/auth/CitizenRegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
+import VerifyEmailPage from './pages/auth/VerifyEmailPage';
+import NotFoundPage from './pages/NotFoundPage';
 import AdminLayout from './components/admin/AdminLayout';
 import CitizenLayout from './components/citizen/CitizenLayout';
 import { Loader2 } from 'lucide-react';
@@ -60,9 +64,15 @@ function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
+        {/* Shared Auth */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+
         {/* Citizen Auth */}
         <Route path="/citizen/login" element={<CitizenLoginPage />} />
         <Route path="/citizen/register" element={<CitizenRegisterPage />} />
+        <Route path="/citizen/forgot-password" element={<ForgotPasswordPage />} />
 
         {/* Admin Dashboard */}
         <Route
@@ -98,7 +108,7 @@ function AppRoutes() {
           <Route path="settings" element={<CitizenSettingsPage />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
   );

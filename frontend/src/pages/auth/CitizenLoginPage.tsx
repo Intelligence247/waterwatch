@@ -111,9 +111,17 @@ export default function CitizenLoginPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="password" className="block text-sm font-semibold text-slate-700">
+                  Password
+                </label>
+                <Link
+                  to="/citizen/forgot-password"
+                  className="text-xs font-semibold text-teal-700 hover:text-teal-900 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   id="password"
@@ -129,7 +137,7 @@ export default function CitizenLoginPage() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
@@ -139,7 +147,7 @@ export default function CitizenLoginPage() {
               disabled={submitting}
               className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {submitting ? <Loader2 className="w-4.5 h-4.5 animate-spin" /> : null}
+              {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
               {submitting ? 'Signing in...' : 'Sign in'}
             </button>
           </form>

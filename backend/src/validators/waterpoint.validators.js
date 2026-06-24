@@ -57,7 +57,7 @@ export const listWaterpointsSchema = z.object({
   params: z.object({}).optional(),
   query: z.object({
     page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce.number().int().positive().max(100).default(20),
+    limit: z.coerce.number().int().positive().max(1000).default(20),
     q: z.string().trim().max(100).optional(),
     type: waterpointType.optional(),
     status: waterpointStatus.optional(),

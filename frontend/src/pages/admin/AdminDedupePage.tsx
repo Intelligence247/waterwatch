@@ -677,7 +677,7 @@ export default function AdminDedupePage() {
                 {/* Visual Mapping Info */}
                 <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3.5 space-y-2">
                   <div className="flex gap-2">
-                    <AlertTriangle className="w-4.5 h-4.5 text-amber-600 shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <div>
                       <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wide">
                         {getRecommendationLabel(selectedCandidate.recommendation)}

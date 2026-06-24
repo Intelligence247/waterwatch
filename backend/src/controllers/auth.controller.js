@@ -24,6 +24,12 @@ function getBackendPublicUrl(env) {
   return env.BACKEND_PUBLIC_URL;
 }
 
+function getFrontendPublicUrl(env) {
+  // CLIENT_ORIGIN may be comma-separated; use the first entry as the primary frontend URL
+  const primary = env.CLIENT_ORIGIN.split(",")[0].trim();
+  return primary;
+}
+
 function toPublicUser(user) {
   return {
     id: String(user._id),
@@ -65,7 +71,7 @@ async function createAndSendVerification(user, env) {
   user.emailVerificationExpiresAt = new Date(Date.now() + VERIFICATION_TTL_MS);
   await user.save();
 
-  const verificationUrl = `${getBackendPublicUrl(env)}/api/auth/verify-email?token=${rawToken}`;
+  const verificationUrl = `${getFrontendPublicUrl(env)}/verify-email?token=${rawToken}`;
   await sendVerificationEmail({
     to: user.email,
     fullName: user.fullName,
@@ -79,7 +85,7 @@ async function createAndSendPasswordReset(user, env) {
   user.passwordResetExpiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
   await user.save();
 
-  const resetUrl = `${getBackendPublicUrl(env)}/api/auth/reset-password?token=${rawToken}`;
+  const resetUrl = `${getFrontendPublicUrl(env)}/reset-password?token=${rawToken}`;
   await sendPasswordResetEmail({
     to: user.email,
     fullName: user.fullName,
