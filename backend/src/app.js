@@ -3,6 +3,7 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
 import swaggerUi from "swagger-ui-express";
@@ -10,6 +11,16 @@ import { swaggerSpec } from "./docs/swagger.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { notFound } from "./middleware/notFound.js";
 import { apiRouter } from "./routes/index.js";
+
+// General API rate limiter — 200 requests per IP per 15-minute window.
+// Auth endpoints carry a tighter limiter (50 req / 15 min) applied in auth.routes.js.
+const globalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please try again later." },
+});
 
 function parseAllowedOrigins(clientOriginEnv) {
   return clientOriginEnv
@@ -55,6 +66,7 @@ export function createApp(env) {
   app.use(express.urlencoded({ extended: true }));
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
+  app.use("/api", globalApiLimiter);
   app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.use("/api", apiRouter);
   app.use(notFound);

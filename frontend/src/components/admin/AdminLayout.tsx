@@ -68,7 +68,7 @@ export default function AdminLayout() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 animate-slide-left ${
+        className={`fixed inset-y-0 left-0 top-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-300 ${
           sidebarOpen ? 'max-lg:translate-x-0' : 'max-lg:-translate-x-full'
         } lg:translate-x-0`}
       >
@@ -158,7 +158,11 @@ export default function AdminLayout() {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div key={location.pathname} className="animate-fade-up">
+          <div
+            key={location.pathname}
+            className="animate-page-enter"
+            onAnimationEnd={(e) => e.currentTarget.classList.remove('animate-page-enter')}
+          >
             <Outlet />
           </div>
         </main>
