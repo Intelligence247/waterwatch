@@ -432,7 +432,7 @@ All routes are prefixed with `/api`. Interactive documentation is available at `
 
 ## Acknowledgements
 
-- **Supervisor:** [Your supervisor's name], Department of Information Technology, University of Ilorin
+- **Supervisor:** MR ALIYU N. ISHOLA, Department of Information Technology, University of Ilorin
 - **Mapping:** [OpenStreetMap](https://www.openstreetmap.org/) contributors — map data licensed under ODbL
 - **Frameworks & Libraries:** Vite, React, Leaflet.js, Express.js, MongoDB / Mongoose, TailwindCSS, Cloudinary, Nodemailer
 - **Icons:** [Lucide React](https://lucide.dev/)
