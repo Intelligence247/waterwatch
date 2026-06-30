@@ -698,7 +698,7 @@ export default function WaterpointsPage() {
       {mapPickerOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setMapPickerOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
               <h3 className="font-heading font-700 text-slate-900 text-sm">Pick exact location</h3>
               <button type="button" onClick={() => setMapPickerOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 text-slate-400">

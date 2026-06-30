@@ -171,6 +171,13 @@ export default function CitizenExplorePage() {
     setFlyTo({ lat: point.latitude, lng: point.longitude });
   };
 
+  const handleReportMarkerClick = (point: Waterpoint) => {
+    setClickedLatLng({ lat: point.latitude, lng: point.longitude });
+    setReportForm((prev) => ({ ...prev, waterpointId: point.id }));
+    setCapturedAccuracyMeters(null);
+    toast('success', `Linked report to "${point.name}".`);
+  };
+
   const openGoogleMaps = (point: Waterpoint) => {
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${point.latitude},${point.longitude}`, '_blank');
   };
@@ -392,7 +399,9 @@ export default function CitizenExplorePage() {
                 key={point.id}
                 position={[point.latitude, point.longitude]}
                 icon={createCustomIcon(point.status)}
-                eventHandlers={{ click: () => handleMarkerClick(point) }}
+                eventHandlers={{
+                  click: () => (mapMode === 'report' ? handleReportMarkerClick(point) : handleMarkerClick(point)),
+                }}
               >
                 <Popup>
                   <div className="min-w-[180px]">
@@ -525,8 +534,17 @@ export default function CitizenExplorePage() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <p className="text-xs text-slate-500 -mt-1">
+                    Click a water point marker on the map to link this report to it, or click empty ground for a general location report.
+                  </p>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Link to existing water point (optional)</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Linked water point (optional)</label>
+                    {reportForm.waterpointId && (
+                      <p className="text-xs text-teal-700 font-semibold mb-1.5 inline-flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        Linked to {waterpoints.find((wp) => wp.id === reportForm.waterpointId)?.name ?? 'selected water point'}
+                      </p>
+                    )}
                     <select
                       value={reportForm.waterpointId}
                       onChange={(e) => setReportForm({ ...reportForm, waterpointId: e.target.value })}

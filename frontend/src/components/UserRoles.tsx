@@ -104,7 +104,7 @@ export default function UserRoles() {
             transitionDelay: '100ms',
           }}
         >
-          <div className="relative inline-flex p-1.5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+          <div className="relative inline-flex w-full max-w-sm sm:w-auto sm:max-w-none p-1.5 rounded-2xl bg-white border border-slate-200 shadow-sm">
             <div
               className="absolute top-1.5 bottom-1.5 rounded-xl bg-teal-700 shadow-sm transition-all duration-300 ease-out"
               style={{
@@ -114,21 +114,23 @@ export default function UserRoles() {
             />
             <button
               onClick={() => activeTabSet('citizen')}
-              className={`relative z-10 inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold transition-colors duration-200 min-w-[180px] sm:min-w-[200px] ${
+              className={`relative z-10 flex-1 sm:flex-none inline-flex items-center justify-center gap-2 sm:gap-2.5 px-3 sm:px-7 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-colors duration-200 sm:min-w-[200px] whitespace-nowrap ${
                 activeTab === 'citizen' ? 'text-white' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Users className="w-4 h-4" />
-              Citizens / Residents
+              <Users className="w-4 h-4 shrink-0" />
+              <span className="sm:hidden">Citizens</span>
+              <span className="hidden sm:inline">Citizens / Residents</span>
             </button>
             <button
               onClick={() => activeTabSet('admin')}
-              className={`relative z-10 inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-xl text-sm font-bold transition-colors duration-200 min-w-[180px] sm:min-w-[200px] ${
+              className={`relative z-10 flex-1 sm:flex-none inline-flex items-center justify-center gap-2 sm:gap-2.5 px-3 sm:px-7 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-colors duration-200 sm:min-w-[200px] whitespace-nowrap ${
                 activeTab === 'admin' ? 'text-white' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Shield className="w-4 h-4" />
-              Administrators
+              <Shield className="w-4 h-4 shrink-0" />
+              <span className="sm:hidden">Admins</span>
+              <span className="hidden sm:inline">Administrators</span>
             </button>
           </div>
         </div>

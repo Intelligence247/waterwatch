@@ -108,9 +108,9 @@ function nameSimilarityScore(left, right) {
   return union ? intersection / union : 0;
 }
 
-function dedupeRecommendation({ distanceMeters, minDistanceMeters, reviewDistanceMeters, nameScore }) {
+function dedupeRecommendation({ distanceMeters, minDistanceMeters, reviewDistanceMeters, nameScore, sameType }) {
   if (distanceMeters <= minDistanceMeters) return "hard_duplicate";
-  if (distanceMeters <= reviewDistanceMeters && nameScore >= 0.8) return "merge_candidate";
+  if (distanceMeters <= reviewDistanceMeters && (nameScore >= 0.8 || sameType)) return "merge_candidate";
   if (distanceMeters <= reviewDistanceMeters) return "review_candidate";
   return "no_action";
 }
@@ -121,9 +121,9 @@ async function evaluateNearbyPolicy({ latitude, longitude, type, community, excl
   const reviewDistanceMeters = Math.max(minDistanceMeters, settings.waterpointReviewDistanceMeters);
   const normalizedCommunity = normalizeText(community);
 
-  const query = {
-    type,
-  };
+  // Distance is the primary duplicate signal: type is intentionally NOT filtered here so a
+  // mislabeled type at the same coordinates (e.g. "well" vs "borehole") still gets caught.
+  const query = {};
 
   if (excludeId) {
     query._id = { $ne: new mongoose.Types.ObjectId(excludeId) };
@@ -538,16 +538,19 @@ export async function getWaterpointDedupeAudit(req, res) {
       const left = waterpoints[i];
       const right = waterpoints[j];
 
-      if (left.type !== right.type) continue;
-
       const distance = calculateDistanceMeters(left, right);
       if (distance > thresholdMeters) continue;
+
+      // Type is intentionally not a hard filter: a duplicate is still a duplicate even if it
+      // was logged under the wrong type. Distance + community are the primary signals; type
+      // and name similarity only influence severity below.
+      const isSameType = left.type === right.type;
 
       // Relax community check if they are very close (<= minDistanceMeters)
       const isVeryClose = distance <= minDistanceMeters;
       const isSameCommunity = left.normalizedCommunity === right.normalizedCommunity;
 
-      if (!isVeryClose && !isSameCommunity) continue;
+      if (!isVeryClose && !isSameCommunity && !isSameType) continue;
 
       const score = Number(nameSimilarityScore(left.name, right.name).toFixed(2));
       const recommendation = dedupeRecommendation({
@@ -555,6 +558,7 @@ export async function getWaterpointDedupeAudit(req, res) {
         minDistanceMeters,
         reviewDistanceMeters,
         nameScore: score,
+        sameType: isSameType,
       });
       const roundedDistance = Number(distance.toFixed(2));
 

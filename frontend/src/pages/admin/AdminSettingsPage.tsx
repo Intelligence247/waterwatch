@@ -155,7 +155,7 @@ export default function AdminSettingsPage() {
                     max="100"
                     value={minDist}
                     onChange={(e) => setMinDist(Number(e.target.value))}
-                    className="flex-1 accent-teal-600 h-1.5 bg-slate-100 rounded-lg cursor-pointer"
+                    className="flex-1 min-w-0 accent-teal-600 h-1.5 bg-slate-100 rounded-lg cursor-pointer"
                   />
                   <input
                     type="number"
@@ -192,7 +192,7 @@ export default function AdminSettingsPage() {
                     max="200"
                     value={reviewDist}
                     onChange={(e) => setReviewDist(Number(e.target.value))}
-                    className="flex-1 accent-teal-600 h-1.5 bg-slate-100 rounded-lg cursor-pointer"
+                    className="flex-1 min-w-0 accent-teal-600 h-1.5 bg-slate-100 rounded-lg cursor-pointer"
                   />
                   <input
                     type="number"
@@ -229,7 +229,7 @@ export default function AdminSettingsPage() {
                     max="300"
                     value={auditDist}
                     onChange={(e) => setAuditDist(Number(e.target.value))}
-                    className="flex-1 accent-teal-600 h-1.5 bg-slate-100 rounded-lg cursor-pointer"
+                    className="flex-1 min-w-0 accent-teal-600 h-1.5 bg-slate-100 rounded-lg cursor-pointer"
                   />
                   <input
                     type="number"
@@ -314,12 +314,12 @@ export default function AdminSettingsPage() {
               </svg>
 
               {/* Labels overlay */}
-              <div className="absolute bottom-2 text-[9px] font-bold text-slate-500 bg-white border border-slate-100 px-2 py-0.5 rounded-full shadow-sm flex items-center gap-3">
-                <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400" /> Auto-Flag ({minDist}m)
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[92%] text-[9px] font-bold text-slate-500 bg-white border border-slate-100 px-2 py-1 rounded-2xl shadow-sm flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5">
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" /> Auto-Flag ({minDist}m)
                 </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Review ({reviewDist}m)
+                <span className="flex items-center gap-1 whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" /> Review ({reviewDist}m)
                 </span>
               </div>
             </div>
